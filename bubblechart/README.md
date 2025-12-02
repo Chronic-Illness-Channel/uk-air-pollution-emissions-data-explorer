@@ -79,7 +79,7 @@ To add new features or modify the scatter chart:
 
 ## Related Projects
 
-- **NAEI Multi-Group Line Chart Viewer** (`../CIC-test-naei-multigroup-viewer/v2.3-modular-CIC-testdb/`) - Time-series line chart viewer for comparing trends across years
+- **UK Air Pollution/Emissions Line Chart** (`../linechart/`) - Time-series line chart viewer for comparing trends across years
 
 ## Credits
 

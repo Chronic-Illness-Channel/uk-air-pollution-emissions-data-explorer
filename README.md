@@ -5,8 +5,8 @@ This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and li
 ## Structure at a Glance
 - `index.html` &rarr; parent shell that preloads shared data, swaps between the line and bubble chart iframes, and injects shared styles/assets.
 - `SharedResources/` &rarr; common Supabase client config, analytics helper, shared-data loader, color palette, fonts, and images consumed by both charts.
-- `CIC-test-naei-bubblechart-v2.0/` &rarr; self-contained bubble chart app with its own Supabase module (`supabase.js`), bridge loader, chart renderer, export helper, and main UI script.
-- `CIC-test-naei-linechart-v2.4/` &rarr; modular line chart app with its own Supabase module, chart logic, and export workflow.
+- `bubblechart/` &rarr; self-contained bubble chart app with its own Supabase module (`supabase.js`), bridge loader, chart renderer, export helper, and main UI script.
+- `linechart/` &rarr; modular line chart app with its own Supabase module, chart logic, and export workflow.
 - `supabase/` &rarr; edge function and configuration scaffolding used by Supabase for scheduled aggregations and analytics capture.
 
 ## How Things Fit Together
@@ -35,15 +35,15 @@ This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and li
 4. Test the new path on GitHub Pages (or a local SPA preview) by loading `/your-tab` directly to be sure the shell + iframe render together.
 
 ## Local SPA Preview
-GitHub Pages hosts the project at `/CIC-test-naei-multigroup-viewer/`, so run a SPA-aware server from the parent directory to reproduce the same URL prefix locally:
+GitHub Pages hosts the project at `/uk-air-pollution-emissions-data-explorer/`, so run a SPA-aware server from the parent directory to reproduce the same URL prefix locally:
 
 ```bash
-cd /Users/mikehinford/Dropbox/Projects/NAEI\ Multigroup\ Viewer
-npx http-server-spa ./CIC-test-naei-multigroup-viewer index.html 4173 -c-1
+cd /Users/mikehinford/Dropbox/Projects/CIC\ Data\ Explorer
+npx http-server-spa ./uk-air-pollution-emissions-data-explorer index.html 4173 -c-1
 ```
 
-- Visit `http://localhost:4173/CIC-test-naei-multigroup-viewer/` for the default view, or append `/category-info`, `/user-guide`, or `/resources` to confirm deep links mount the SPA shell before loading the iframe content.
-- Any SPA-aware server (`vite preview`, `serve-spa`, etc.) works as long as it rewrites unknown routes to `index.html` and preserves the `/CIC-test-naei-multigroup-viewer/` prefix.
+- Visit `http://localhost:4173/uk-air-pollution-emissions-data-explorer/` for the default view, or append `/category-info`, `/user-guide`, or `/resources` to confirm deep links mount the SPA shell before loading the iframe content.
+- Any SPA-aware server (`vite preview`, `serve-spa`, etc.) works as long as it rewrites unknown routes to `index.html` and preserves the `/uk-air-pollution-emissions-data-explorer/` prefix.
 
 ## Tailwind Build
 - Run `npm install` once to pull in the Tailwind/PostCSS toolchain.
