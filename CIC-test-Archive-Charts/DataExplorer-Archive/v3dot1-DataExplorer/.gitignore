@@ -1,6 +1,0 @@
-# Ignore macOS system files
-.DS_Store
-/node_modules/
-/Sleepercar-TestCIC-HomePage
-/V2.4 - mockup
-.idea/
