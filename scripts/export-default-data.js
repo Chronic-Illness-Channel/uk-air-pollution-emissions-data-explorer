@@ -13,11 +13,11 @@ const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.NAEI_SUPABASE_URL
   || process.env.SUPABASE_URL
-  || 'https://buqarqyqlugwaabuuyfy.supabase.co';
+  || 'https://vhplzwzzkeueyelaqftl.supabase.co';
 const SUPABASE_KEY = process.env.NAEI_SUPABASE_KEY
   || process.env.SUPABASE_SERVICE_ROLE_KEY
   || process.env.SUPABASE_ANON_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1cWFycXlxbHVnd2FhYnV1eWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyOTczNDEsImV4cCI6MjA3Njg3MzM0MX0._zommN8QkzS0hY__N7KfuIaalKWG-PrSPq1BWg_BBjg';
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocGx6d3p6a2V1ZXllbGFxZnRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjQwODUsImV4cCI6MjA3NjA0MDA4NX0.mBAwFmfSpqffvp1GGDHKvp-y_hukSZmF4GN-Ghnf--o';
 
 const OUTPUT_PATH = path.join(__dirname, '..', 'SharedResources', 'default-chart-data.json');
 
@@ -145,14 +145,14 @@ async function main() {
     defaults: {
       lineChart: {
         pollutant: DEFAULT_LINE_POLLUTANT,
-        groups: DEFAULT_LINE_CATEGORIES,
+        categories: DEFAULT_LINE_CATEGORIES,
         startYear: years[0] ? Number(years[0]) : null,
         endYear: years[years.length - 1] ? Number(years[years.length - 1]) : null
       },
       bubbleChart: {
         pollutant: DEFAULT_BUBBLE_POLLUTANT,
         activityPollutant: DEFAULT_ACTIVITY_POLLUTANT,
-        groups: DEFAULT_BUBBLE_CATEGORIES,
+        categories: DEFAULT_BUBBLE_CATEGORIES,
         year: DEFAULT_YEAR
       }
     },
