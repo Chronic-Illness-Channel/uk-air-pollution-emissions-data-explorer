@@ -123,6 +123,45 @@ function buildBubbleFilenameBase(chartData) {
   return `${yearSegment}_Bubble-Chart_${pollutantSegment}_${categorySegment}`;
 }
 
+function resolveEfConversionFactor(pollutantUnit) {
+  if (!pollutantUnit || typeof pollutantUnit !== 'string') {
+    exportLogger.warn('Missing pollutant unit while resolving EF conversion; defaulting to 1,000,000');
+    return 1000000;
+  }
+
+  switch (pollutantUnit.trim().toLowerCase()) {
+    case 't':
+    case 'tonnes':
+      return 1000;
+    case 'grams international toxic equivalent':
+      return 1000;
+    case 'kilotonne':
+    case 'kilotonne/kt co2 equivalent':
+    case 'kt co2 equivalent':
+      return 1000000;
+    case 'kg':
+      return 1;
+    default:
+      exportLogger.warn('Unknown pollutant unit for EF conversion, defaulting to 1,000,000:', pollutantUnit);
+      return 1000000;
+  }
+}
+
+function calculateEmissionFactor(point, conversionFactor) {
+  if (!point) {
+    return 0;
+  }
+  if (point.EF !== undefined && point.EF !== null) {
+    return point.EF;
+  }
+  const activityValue = Number(point.actDataValue);
+  const emissionsValue = Number(point.pollutantValue);
+  if (!Number.isFinite(activityValue) || activityValue === 0 || !Number.isFinite(emissionsValue)) {
+    return 0;
+  }
+  return (emissionsValue / activityValue) * conversionFactor;
+}
+
 /**
  * Get chart SVG and convert to high-resolution image URI
  * @param {Object} chart - Google Charts instance
@@ -1310,6 +1349,7 @@ function exportData(format = 'csv') {
 
   const pollutantName = chartData.pollutantName;
   const pollutantUnit = window.supabaseModule.getPollutantUnit(chartData.pollutantId);
+  const efConversionFactor = resolveEfConversionFactor(pollutantUnit);
   const actDataId = window.supabaseModule.actDataPollutantId || window.supabaseModule.activityDataId;
   const activityUnit = window.supabaseModule.getPollutantUnit(actDataId);
   const year = chartData.year;
@@ -1373,8 +1413,7 @@ function exportData(format = 'csv') {
 
   // Data rows
   dataPoints.forEach(point => {
-    const emissionFactor = point.EF !== undefined ? point.EF : 
-      (point.actDataValue !== 0 ? (point.pollutantValue / point.actDataValue) * 1000000 : 0);
+    const emissionFactor = calculateEmissionFactor(point, efConversionFactor);
 
     const categoryLabel = point.categoryName || 'Category';
     rows.push([
