@@ -86,10 +86,9 @@
       height: 100vh;
       background: white;
       z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: block;
+      box-sizing: border-box;
+      padding: 0 1.5rem;
       transition: opacity 0.5s ease;
     }
     
@@ -99,13 +98,23 @@
       border-radius: 50%;
       background: conic-gradient(#E6194B 0deg 120deg, #F58231 120deg 240deg, #FFE119 240deg 360deg);
       animation: spin 1.25s linear infinite;
-      margin-bottom: 20px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: 0;
     }
     
     #main-loading-overlay .main-loading-text {
       color: #374151;
       font-size: 18px;
       font-weight: 500;
+      margin: 0;
+      position: absolute;
+      top: calc(50% + 36px + 20px);
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
     }
     
   #chart_div {
