@@ -92,16 +92,26 @@
       transition: opacity 0.5s ease;
     }
     
+    #main-loading-overlay .main-loading-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 360px;
+    }
+    
     #main-loading-overlay .main-spinner {
       width: 72px;
       height: 72px;
       border-radius: 50%;
       background: conic-gradient(#E6194B 0deg 120deg, #F58231 120deg 240deg, #FFE119 240deg 360deg);
       animation: spin 1.25s linear infinite;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       margin: 0;
     }
     
@@ -110,11 +120,6 @@
       font-size: 18px;
       font-weight: 500;
       margin: 0;
-      position: absolute;
-      top: calc(50% + 36px + 20px);
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
     }
     
   #chart_div {
@@ -677,8 +682,10 @@
 
   <!-- Full-screen loading overlay -->
   <div id="main-loading-overlay">
-    <div class="main-spinner"></div>
-    <div class="main-loading-text">Loading data, please wait...</div>
+    <div class="main-loading-content">
+      <div class="main-spinner"></div>
+      <div class="main-loading-text">Loading data, please wait...</div>
+    </div>
   </div>
 
   <!-- CIC Logo and Social Media Sidebar -->
