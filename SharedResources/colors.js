@@ -6,11 +6,11 @@
 // Distinct color palette for up to 10 series
 const distinctPalette = [
   '#E6194B', // Red
-  '#3CB44B', // Green
-  '#FFE119', // Yellow
+  '#911EB4', // Purple
   '#4363D8', // Blue
   '#F58231', // Orange
-  '#911EB4', // Purple
+  '#FFE119', // Yellow
+  '#3CB44B', // Green
   '#46F0F0', // Cyan
   '#F032E6', // Magenta
   '#BCF60C', // Lime
