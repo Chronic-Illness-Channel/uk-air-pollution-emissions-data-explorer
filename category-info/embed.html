@@ -11,8 +11,11 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="UK Air Pollution and Emissions Data Explorer">
   <meta name="twitter:description" content="Interactive charts using UK Government data">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../dist/tailwind.css">
-  <link rel="stylesheet" href="../SharedResources/common-styles.css">
+  <link rel="stylesheet" href="../SharedResources/common-styles.css?v=inter1">
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -327,7 +330,7 @@
   <script src="../SharedResources/supabase-config.js"></script>
   <script src="../SharedResources/shared-data-loader.js"></script>
 </head>
-<body>
+<body data-page-slug="category-info">
   <main class="chart-shell category-info-shell">
     <div class="title-row">
       <h2 class="main-title" id="category-info-heading">Pollution Category Information</h2>
@@ -1780,7 +1783,12 @@
       });
 
       window.addEventListener('message', event => {
-        if (event?.data?.type === 'requestHeight') {
+        const payload = event?.data;
+        if (!payload) {
+          return;
+        }
+
+        if (payload.type === 'requestHeight') {
           if (initialContentReady) {
             sendHeightToParent(true, { awaitInitialSettlement: true });
           } else {
@@ -1790,5 +1798,6 @@
       });
     })();
   </script>
+  <script src="../SharedResources/analytics.js"></script>
 </body>
 </html>

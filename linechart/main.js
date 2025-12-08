@@ -30,9 +30,10 @@ let googleChartsReady = false;
 let googleChartsLoadPromise = null;
 let initialLoadComplete = false; // Track if initial chart load is done (prevent resize redraw)
 let initFailureNotified = false; // Ensure we only notify parent once on failure
+let chartReadyNotified = false; // Prevent duplicate chartReady messages
 let hydrationRefreshPending = false;
 let hydrationRefreshTimer = null;
-let bootstrapReadyNotified = false;
+let lastTrackedLineSelectionKey = null; // Avoid duplicate analytics events when selections stay the same
 const DEFAULT_LINE_SELECTIONS = {
   pollutant: 'PM2.5',
   categories: ['All'],
@@ -879,23 +880,6 @@ function sendContentHeightToParent(force = false) {
   }
 }
 
-function notifyParentBootstrapReady() {
-  if (bootstrapReadyNotified) {
-    return;
-  }
-  bootstrapReadyNotified = true;
-  try {
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({
-        type: 'chartBootstrapReady',
-        chart: 'linechart'
-      }, '*');
-    }
-  } catch (error) {
-    // Parent messaging can fail if cross-origin; ignore
-  }
-}
-
 applyLineCssFooterReserve(LINE_DEFAULT_CSS_FOOTER_RESERVE);
 applyLineCssViewportHeight('100vh');
 if (LINE_IS_EMBEDDED) {
@@ -1588,6 +1572,69 @@ function updateUrlFromChartState() {
   }, 300); // Debounce for 300ms
 }
 
+function buildLineChartViewMeta({
+  pollutantName,
+  startYear,
+  endYear,
+  categoryNames = []
+} = {}) {
+  const pollutantRecord = (window.allPollutantsData || []).find(entry => entry.pollutant === pollutantName);
+  const pollutantId = pollutantRecord ? pollutantRecord.id : null;
+  const categoryRecords = window.allCategoryInfo || [];
+  const categoryIds = categoryNames
+    .map(name => {
+      const match = categoryRecords.find(entry => getCategoryDisplayTitle(entry) === name);
+      return match ? match.id : null;
+    })
+    .filter(id => id !== null);
+
+  const queryParts = [];
+  if (pollutantId) {
+    queryParts.push(`pollutant_id=${encodeURIComponent(pollutantId)}`);
+  }
+  if (categoryIds.length) {
+    queryParts.push(`category_ids=${categoryIds.join(',')}`);
+  }
+  if (startYear) {
+    queryParts.push(`start_year=${encodeURIComponent(startYear)}`);
+  }
+  if (endYear) {
+    queryParts.push(`end_year=${encodeURIComponent(endYear)}`);
+  }
+
+  const normalizedQuery = queryParts.join('&');
+  const queryString = normalizedQuery ? `?${normalizedQuery}` : null;
+  const shareUrl = normalizedQuery
+    ? `${window.location.origin}${window.location.pathname}?${normalizedQuery}`
+    : window.location.href;
+
+  return {
+    pageSlug: '/linechart',
+    pollutant: pollutantName || null,
+    pollutant_id: pollutantId || null,
+    start_year: startYear || null,
+    end_year: endYear || null,
+    year_range: (startYear && endYear) ? (endYear - startYear + 1) : null,
+    categories: categoryNames,
+    categories_count: categoryNames.length,
+    category_ids: categoryIds,
+    query: queryString,
+    share_url: shareUrl
+  };
+}
+
+function publishLineChartViewMeta(meta) {
+  if (!meta) {
+    return;
+  }
+  window.__LINE_CHART_VIEW_META__ = meta;
+  try {
+    window.dispatchEvent(new CustomEvent('lineChartViewMeta', { detail: meta }));
+  } catch (error) {
+    // Ignore dispatch failures to avoid noisy consoles in older browsers
+  }
+}
+
 
 async function updateChart(){
   if (!googleChartsReady || !hasGoogleCoreChartConstructors()) {
@@ -1625,15 +1672,32 @@ async function updateChart(){
   // Update the URL with the new state (debounced)
   updateUrlFromChartState();
 
-  // Track chart view analytics
-  window.supabaseModule.trackAnalytics('chart_view', {
-    pollutant: pollutant,
-    start_year: startYear,
-    end_year: endYear,
-    categories: selectedCategories,
-    categories_count: selectedCategories.length,
-    year_range: endYear - startYear + 1
+  publishLineChartViewMeta(buildLineChartViewMeta({
+    pollutantName: pollutant,
+    startYear,
+    endYear,
+    categoryNames: selectedCategories
+  }));
+
+  // Track chart view analytics only when the selection changes
+  const nextSelectionKey = JSON.stringify({
+    pollutant,
+    startYear,
+    endYear,
+    categories: selectedCategories
   });
+
+  if (nextSelectionKey !== lastTrackedLineSelectionKey) {
+    lastTrackedLineSelectionKey = nextSelectionKey;
+    window.supabaseModule.trackAnalytics('linechart_drawn', {
+      pollutant: pollutant,
+      start_year: startYear,
+      end_year: endYear,
+      categories: selectedCategories,
+      categories_count: selectedCategories.length,
+      year_range: endYear - startYear + 1
+    });
+  }
 
   window.Colors.resetColorSystem();
   if (seriesVisibility.length !== selectedCategories.length) {
@@ -2152,10 +2216,7 @@ async function revealMainContent() {
 
                 setTimeout(() => {
                   updateUrlFromChartState();
-                  window.parent.postMessage({
-                    type: 'chartReady',
-                    chart: 'line'
-                  }, '*');
+                  notifyChartReady();
                   resolve();
                 }, 16);
               }, 16);
@@ -2355,7 +2416,6 @@ async function init() {
       pollutantUnits,
       categoryData
     } = await window.supabaseModule.loadData();
-    notifyParentBootstrapReady();
     const resolvedCategories = Array.isArray(categories) ? categories : (Array.isArray(groups) ? groups : []);
     const resolvedCategoryData = categoryData || {};
 
@@ -2444,19 +2504,36 @@ function notifyParentOfInitFailure(error) {
 
 // Add the chart ready message when the chart is fully loaded
 function notifyChartReady() {
+  if (chartReadyNotified) {
+    sendContentHeightToParent();
+    return;
+  }
+
+  chartReadyNotified = true;
+
   try {
-    // Add a small delay to ensure the chart is fully rendered
     setTimeout(() => {
-      if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ 
-          type: 'chartReady', 
-          chart: 'line',
-          timestamp: new Date().toISOString()
-        }, '*');
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'chartReady',
+            chart: 'line',
+            timestamp: new Date().toISOString()
+          }, '*');
+        }
+      } catch (postError) {
+        console.error('Failed to post line chartReady message:', postError);
       }
-      
-      // Re-enable animations for future updates
-      if (chart) {
+
+      setTimeout(() => {
+        try {
+          sendContentHeightToParent(true);
+        } catch (heightError) {
+          console.error('Unable to send initial line chart height:', heightError);
+        }
+      }, 50);
+
+      if (chart && typeof chart.setOptions === 'function') {
         chart.setOptions({
           animation: {
             duration: 1000,

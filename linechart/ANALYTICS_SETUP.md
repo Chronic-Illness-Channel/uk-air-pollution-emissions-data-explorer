@@ -7,6 +7,8 @@ This analytics system tracks user interactions with your NAEI viewer to help you
 - How often data is exported (CSV/Excel/PNG)
 - User engagement patterns
 
+> **Heads up:** the repository now ships a much lighter site-wide tracker (`SharedResources/analytics.js`) that writes to the `site_events` table created by `../CIC-test-data-explorer-analytics/scripts/site_analytics_setup.sql`. The legacy, linechart-specific analytics bundle has moved into the archive under `CIC-test-Archive-Charts/DataExplorer-Archive/v4dot0-DataExplorer/linechart/`. Use those archived assets only if you still need the detailed dashboard; otherwise prefer the lightweight site-wide tracker.
+
 ## Privacy-First Approach
 - **No personal data collected** - only usage patterns
 - **Fingerprinting is minimal** - basic browser info for unique user counting
@@ -19,7 +21,7 @@ This analytics system tracks user interactions with your NAEI viewer to help you
 
 1. Open your Supabase project dashboard
 2. Go to **SQL Editor**  
-3. Copy and paste the contents of `analytics_setup.sql`
+3. Copy and paste the contents of `CIC-test-Archive-Charts/DataExplorer-Archive/v4dot0-DataExplorer/linechart/analytics_setup.sql`
 4. Click **Run** to create the table and views
 
 ### 2. Verify Table Creation
@@ -37,7 +39,7 @@ In the Supabase dashboard:
 
 ### 4. View Analytics Dashboard
 
-Open `analytics-dashboard.html` in your browser to see:
+Open `CIC-test-Archive-Charts/DataExplorer-Archive/v4dot0-DataExplorer/linechart/analytics-dashboard.html` in your browser to see:
 - Real-time usage statistics  
 - Popular pollutants and groups
 - Download statistics
@@ -58,10 +60,10 @@ Open `analytics-dashboard.html` in your browser to see:
 }
 ```
 
-### 📊 Chart View Events  
+### 📊 Linechart Drawn Events  
 ```json
 {
-  "event_type": "chart_view",
+  "event_type": "linechart_drawn",
   "event_data": {
     "pollutant": "PM2.5",
     "start_year": 1990,
@@ -176,7 +178,7 @@ This is hashed and truncated to 16 characters for basic uniqueness while maintai
 
 ### No Analytics Data Appearing
 1. Check browser console for errors
-2. Verify Supabase connection in `analytics-dashboard.html`
+2. Verify Supabase connection in `CIC-test-Archive-Charts/DataExplorer-Archive/v4dot0-DataExplorer/linechart/analytics-dashboard.html`
 3. Ensure `analytics_events` table exists and has proper permissions
 4. Check that RLS policies allow inserts
 

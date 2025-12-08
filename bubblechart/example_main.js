@@ -686,7 +686,7 @@ function updateChart(){
   updateUrlFromChartState();
 
   // Track chart view analytics
-  window.supabaseModule.trackAnalytics('chart_view', {
+  window.supabaseModule.trackAnalytics('bubblechart_drawn', {
     pollutant: pollutant,
     start_year: startYear,
     end_year: endYear,

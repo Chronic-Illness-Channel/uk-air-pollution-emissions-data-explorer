@@ -106,7 +106,7 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 
-<body>
+<body data-page-slug="bubblechart">
   <div class="chart-shell">
     <div id="loadingOverlay">
       <div class="spinner" aria-hidden="true"></div>
@@ -211,8 +211,86 @@
     </div>
   </div>
 
+  <script>
+    (function () {
+      window.__CIC_CHART_ID__ = 'bubblechart';
+    })();
+  </script>
+
   <!-- Load shared modules -->
   <script src="../SharedResources/analytics.js"></script>
+  <script>
+    (function () {
+      const chartId = 'bubblechart';
+      const embedded = window.parent && window.parent !== window;
+      const state = {
+        seenLogged: false,
+        isVisible: !embedded,
+        meta: null
+      };
+
+      function normalizeMeta(raw) {
+        if (!raw || typeof raw !== 'object') {
+          return { pageSlug: '/bubblechart' };
+        }
+        const normalized = { pageSlug: '/bubblechart', ...raw };
+        if (!normalized.query) {
+          const currentQuery = window.location.search || '';
+          normalized.query = currentQuery || null;
+        }
+        return normalized;
+      }
+
+      function tryTrackSeen() {
+        if (state.seenLogged || !state.isVisible) {
+          return;
+        }
+        if (!state.meta || !window.SiteAnalytics?.trackInteraction) {
+          return;
+        }
+        state.seenLogged = true;
+        window.SiteAnalytics.trackInteraction('bubblechart_seen', state.meta);
+      }
+
+      function handleVisibilityChange(isVisible) {
+        if (!isVisible) {
+          return;
+        }
+        state.isVisible = true;
+        tryTrackSeen();
+      }
+
+      function handleMetaUpdate(meta) {
+        state.meta = normalizeMeta(meta);
+        tryTrackSeen();
+      }
+
+      if (window.__BUBBLE_CHART_VIEW_META__) {
+        handleMetaUpdate(window.__BUBBLE_CHART_VIEW_META__);
+      }
+
+      window.addEventListener('bubbleChartViewMeta', (event) => {
+        handleMetaUpdate(event?.detail);
+      });
+
+      if (!embedded) {
+        handleVisibilityChange(true);
+        return;
+      }
+
+      const container = window.frameElement?.closest?.('.chart-container');
+      if (container && container.getAttribute('aria-hidden') === 'false') {
+        handleVisibilityChange(true);
+      }
+
+      window.addEventListener('message', (event) => {
+        if (event?.data?.type === 'chartVisibility'
+          && event.data.chartId === chartId) {
+          handleVisibilityChange(Boolean(event.data.visible));
+        }
+      });
+    })();
+  </script>
   <script src="../SharedResources/supabase-env.js"></script>
   <script src="../SharedResources/supabase-config.js"></script>
   <script src="../SharedResources/shared-data-loader.js"></script>
