@@ -6,7 +6,7 @@ Version 2.4 of the line chart viewer now uses **shared resources** for better co
 
 ### Shared Resources Integration
 - **Supabase Configuration**: Uses `../../Shared Resources/supabase-config.js` for database connection
-- **Analytics Module**: Uses `../../Shared Resources/analytics.js` for lightweight page-view + interaction tracking
+- **Analytics Module**: Uses `../../Shared Resources/analytics.js` for privacy-friendly tracking
 - **Color Palette**: Uses `../../Shared Resources/colors.js` for consistent color assignment
 - **Common Styles**: Uses `../../Shared Resources/common-styles.css` for base styling
 - **Shared Images**: Logo, favicon, and social media icons from shared directory

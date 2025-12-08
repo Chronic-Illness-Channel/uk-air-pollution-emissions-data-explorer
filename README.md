@@ -1,6 +1,6 @@
-# UK Air Pollution/Emissions Data Explorer (Test)
+# UK Air Pollution/Emissions Data Explorer
 
-This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and line (v2.4) chart applications for exploring UK government emissions data.
+This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and line (v2.4) chart applications for exploring NAEI emissions data.
 
 ## Structure at a Glance
 - `index.html` &rarr; parent shell that preloads shared data, swaps between the line and bubble chart iframes, and injects shared styles/assets.
@@ -15,28 +15,13 @@ This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and li
 3. User actions (filters, exports) stay inside each iframe, while high-level tab changes and analytics events are handled by the parent shell.
 4. Exports rely on client-side XLSX/PNG generation; analytics events post to Supabase via `SharedResources/analytics.js` when enabled.
 
-## Site-Wide Analytics (Optional)
-- The helper `SharedResources/analytics.js` now emits an automatic `page_drawn` event (once per load) plus any manual `interaction` events you send via `SiteAnalytics.trackInteraction(label, data)`. A recurring `page_seen` heartbeat fires every 30 seconds *after* the user interacts (and only while the tab stays visible) so we approximate active dwell time instead of background tab time, and dashboard “Interactions” explicitly filters those heartbeats out so you only see deliberate actions.
-- Events insert into the lightweight `site_events` table through the Supabase REST API, so no application-specific client wiring is required.
-- Country attribution continues to rely on the privacy-friendly timezone/locale guess (`GB`, `US`, etc.); no IP addresses or fingerprints are stored.
-- To provision the storage, run `../CIC-test-data-explorer-analytics/scripts/site_analytics_setup.sql` inside your Supabase project once (the SQL now lives in the private analytics repo), then keep the existing Row Level Security policies for the `anon` role (Supabase now maps this to the publishable key that replaces the legacy anon key).
-- Per-page slugs are inferred from `body[data-page-slug]`; set `window.__SITE_ANALYTICS_DISABLE_AUTO_PAGEVIEW__ = true` before loading the script if a view should remain silent.
-- For a quick local view of the data, open `../CIC-test-data-explorer-analytics/site-analytics-dashboard.html` from the private repo (serve it via `npx serve` or similar). It now pulls from `site_event_daily_summary`, `site_event_country_summary`, `site_event_session_summary`, and the latest `site_events` rows to render overview cards (including Avg Session Length), tables, and recent activity—no deployment needed.
-
 ## Working Locally
 - Serve the repository with any static file server (`python -m http.server`, `npx serve`, etc.) so the Supabase client can resolve relative paths.
 - Configure Supabase credentials once via `.env` + `npm run supabase:env`:
-	1. Copy `.env.example` to `.env.local` (or `.env`) and drop in your test/live project values (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, optional `SUPABASE_STORAGE_KEY_BASE`). Backend/CLI scripts can also read `SUPABASE_SECRET_KEY` if you include it.
-	2. Run `npm run supabase:env` (or `SUPABASE_ENV_FILE=.env.live npm run supabase:env`) to regenerate `SharedResources/supabase-env.js`. The generated file is gitignored on purpose—keep it locally (or recreate it in CI) so secrets never land in the repo.
-	3. Prefer automation, but if you need to hand-edit the values, copy `SharedResources/supabase-env.template.js` to `supabase-env.js` and fill in the placeholders.
-	4. The runtime `SharedResources/supabase-config.js` now auto-detects `window.__NAEI_SUPABASE_CONFIG`, so switching environments only requires rerunning the script with a different env file—no manual edits across multiple HTML files.
+	1. Copy `.env.example` to `.env.local` (or `.env`) and drop in your test/live project values (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional `SUPABASE_STORAGE_KEY_BASE`).
+	2. Run `npm run supabase:env` (or `SUPABASE_ENV_FILE=.env.live npm run supabase:env`) to regenerate `SharedResources/supabase-env.js`.
+	3. The runtime `SharedResources/supabase-config.js` now auto-detects `window.__NAEI_SUPABASE_CONFIG`, so switching environments only requires rerunning the script with a different env file—no manual edits across multiple HTML files.
 - Supabase functions live under `supabase/functions/` and can be deployed via the Supabase CLI when backend updates are needed.
-
-### Supabase API Key Migration (2025+)
-- Supabase now issues **publishable** (`sb_publishable_…`) keys for browser traffic and **secret** (`sb_secret_…`) keys for servers/automation. These replace the legacy `anon` and `service_role` JWTs, which Supabase will retire after November 2025.
-- Generate the new keys from **Project Settings → API Keys → Try the new keys** in the Supabase dashboard, then update your `.env`/CI secrets with `SUPABASE_PUBLISHABLE_KEY` and (optionally) `SUPABASE_SECRET_KEY`.
-- Re-run `npm run supabase:env` whenever you rotate the publishable key so `SharedResources/supabase-env.js` ships the latest browser-safe credential.
-- CLI/Node scripts such as `scripts/export-default-data.js` automatically pick up the secret key if `SUPABASE_SECRET_KEY` or the historic `SUPABASE_SERVICE_ROLE_KEY` env vars are defined, so no additional flags are required after rotation.
 
 ## Deep-Link Tabs & Embeds
 - The shell router inside `index.html` (mirrored in `404.html`) makes `/category-info`, `/user-guide`, and `/resources` deep links fall back to the SPA before the iframe content loads.
@@ -50,15 +35,15 @@ This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and li
 4. Test the new path on GitHub Pages (or a local SPA preview) by loading `/your-tab` directly to be sure the shell + iframe render together.
 
 ## Local SPA Preview
-GitHub Pages hosts the test project at `/CIC-test-uk-air-pollution-emissions-data-explorer/`, so run a SPA-aware server from the parent directory to reproduce the same URL prefix locally:
+GitHub Pages hosts the project at `/uk-air-pollution-emissions-data-explorer/`, so run a SPA-aware server from the parent directory to reproduce the same URL prefix locally:
 
 ```bash
 cd /Users/mikehinford/Dropbox/Projects/CIC\ Data\ Explorer
-npx http-server-spa ./CIC-test-uk-air-pollution-emissions-data-explorer index.html 4173 -c-1
+npx http-server-spa ./uk-air-pollution-emissions-data-explorer index.html 4173 -c-1
 ```
 
-- Visit `http://localhost:4173/CIC-test-uk-air-pollution-emissions-data-explorer/` for the default view, or append `/category-info`, `/user-guide`, or `/resources` to confirm deep links mount the SPA shell before loading the iframe content.
-- Any SPA-aware server (`vite preview`, `serve-spa`, etc.) works as long as it rewrites unknown routes to `index.html` and preserves the `/CIC-test-uk-air-pollution-emissions-data-explorer/` prefix.
+- Visit `http://localhost:4173/uk-air-pollution-emissions-data-explorer/` for the default view, or append `/category-info`, `/user-guide`, or `/resources` to confirm deep links mount the SPA shell before loading the iframe content.
+- Any SPA-aware server (`vite preview`, `serve-spa`, etc.) works as long as it rewrites unknown routes to `index.html` and preserves the `/uk-air-pollution-emissions-data-explorer/` prefix.
 
 ## Tailwind Build
 - Run `npm install` once to pull in the Tailwind/PostCSS toolchain.

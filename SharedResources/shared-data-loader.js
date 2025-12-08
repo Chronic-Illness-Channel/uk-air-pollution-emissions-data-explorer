@@ -22,111 +22,6 @@ const sharedDataInfoLog = (() => {
   return (...args) => info('[SharedData]', ...args);
 })();
 const sharedDataNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
-const SHARED_FAILURE_EVENT_COOLDOWN_MS = 60000;
-const sharedFailureEventScopes = new Map();
-
-function normalizeSharedSlug(slug) {
-  if (!slug || typeof slug !== 'string') {
-    return null;
-  }
-  const trimmed = slug.trim();
-  if (!trimmed) {
-    return null;
-  }
-  if (trimmed.startsWith('http')) {
-    try {
-      return new URL(trimmed, window.location.origin).pathname || '/';
-    } catch (error) {
-      return '/';
-    }
-  }
-  return trimmed.startsWith('/') ? trimmed.replace(/\/+/g, '/') : `/${trimmed}`;
-}
-
-function resolveSharedPageSlug() {
-  const datasetSlug = normalizeSharedSlug(document?.body?.dataset?.pageSlug || '');
-  if (datasetSlug) {
-    return datasetSlug;
-  }
-  try {
-    const path = window.location?.pathname;
-    return normalizeSharedSlug(path) || '/';
-  } catch (error) {
-    return '/';
-  }
-}
-
-function shouldEmitScopedFailure(cache, scopeKey, cooldownMs) {
-  const key = scopeKey || '/';
-  const now = Date.now();
-  const last = cache.get(key) || 0;
-  if (now - last < cooldownMs) {
-    return false;
-  }
-  cache.set(key, now);
-  return true;
-}
-
-function shouldEmitSharedFailureEvent(scopeKey, forceEvent = false) {
-  if (forceEvent) {
-    sharedFailureEventScopes.set(scopeKey || '/', Date.now());
-    return true;
-  }
-  return shouldEmitScopedFailure(sharedFailureEventScopes, scopeKey || '/', SHARED_FAILURE_EVENT_COOLDOWN_MS);
-}
-
-function swallowSharedPromise(promise) {
-  if (promise && typeof promise.then === 'function' && typeof promise.catch === 'function') {
-    promise.catch(() => {});
-  }
-}
-
-function reportSharedSupabaseFailure(context = {}) {
-  const error = context.error;
-  const message = context.message || error?.message || 'Shared data loader Supabase request failed';
-  const source = context.source || context.label || 'shared-data-loader';
-  const durationMs = typeof context.durationMs === 'number' ? context.durationMs : (context.durationMs || null);
-  const attempt = typeof context.attempt === 'number' ? context.attempt : null;
-  const reason = context.reason || null;
-  const pageSlug = normalizeSharedSlug(context.pageSlug) || resolveSharedPageSlug();
-  const scopeKey = context.scopeKey || pageSlug || '/';
-  const shouldEmitEvent = shouldEmitSharedFailureEvent(scopeKey, Boolean(context.forceEvent));
-
-  if (shouldEmitEvent && window.SiteAnalytics?.trackSystem) {
-    swallowSharedPromise(
-      window.SiteAnalytics.trackSystem('sbase_data_error', {
-        page: 'shared_loader',
-        pageSlug,
-        source,
-        label: context.label,
-        durationMs,
-        attempt,
-        reason,
-        message,
-        errorCode: error?.code || null
-      })
-    );
-  }
-
-  if (window.SiteErrors?.log) {
-    swallowSharedPromise(
-      window.SiteErrors.log({
-        pageSlug,
-        source,
-        severity: 'error',
-        message,
-        error_code: error?.code || null,
-        details: {
-          label: context.label || null,
-          durationMs,
-          attempt,
-          reason,
-          stack: error?.stack || null
-        }
-      })
-    );
-  }
-}
 
 const SHARED_RESOURCES_BASE_PATH = (() => {
   const normalizePath = path => {
@@ -233,57 +128,6 @@ const DEFAULT_SNAPSHOT_PATHS = Array.from(new Set([
 let defaultSnapshotPromise = null;
 const HERO_DEFAULT_ACTIVITY_NAME = 'Activity Data';
 
-async function fetchDefaultSnapshotFromPaths() {
-  for (const candidate of DEFAULT_SNAPSHOT_PATHS) {
-    try {
-      sharedDataInfoLog('Attempting to fetch default snapshot', { candidate });
-      const fetchStart = sharedDataNow();
-      const response = await fetch(candidate, { cache: 'no-store' });
-      if (!response.ok) {
-        continue;
-      }
-      const snapshot = await response.json();
-      const duration = Number((sharedDataNow() - fetchStart).toFixed(1));
-      const counts = snapshot?.data
-        ? {
-            pollutants: snapshot.data.pollutants?.length || 0,
-            categories: snapshot.data.categories?.length || 0,
-            rows: snapshot.data.timeseries?.length || snapshot.data.rows?.length || 0,
-            years: snapshot.data.years?.length || 0
-          }
-        : null;
-      sharedDataInfoLog('Default snapshot loaded', {
-        candidate,
-        durationMs: duration,
-        counts
-      });
-      return snapshot;
-    } catch (error) {
-      sharedDataDebugLog(`Default snapshot fetch failed for ${candidate}:`, error);
-    }
-  }
-  sharedDataInfoLog('Default snapshot unavailable after checking configured paths');
-  return null;
-}
-
-function normalizeDefaultSnapshotPayload(snapshot) {
-  if (!snapshot?.data) {
-    return null;
-  }
-  const data = snapshot.data;
-  const categories = Array.isArray(data.categories)
-    ? data.categories
-    : (Array.isArray(data.groups) ? data.groups : []);
-
-  return {
-    pollutants: data.pollutants || [],
-    categories,
-    groups: categories,
-    rows: data.timeseries || data.rows || data.data || [],
-    generatedAt: snapshot.generatedAt || null
-  };
-}
-
 function uniqNumbers(values = []) {
   const deduped = [];
   const seen = new Set();
@@ -329,12 +173,38 @@ async function loadDefaultSnapshot() {
 
   if (!defaultSnapshotPromise) {
     defaultSnapshotPromise = (async () => {
-      const snapshot = await fetchDefaultSnapshotFromPaths();
-      if (snapshot) {
-        window.SharedDataCache.defaultSnapshot = snapshot;
-        window.SharedDataCache.snapshotData = snapshot.data || null;
+      for (const candidate of DEFAULT_SNAPSHOT_PATHS) {
+        try {
+          sharedDataInfoLog('Attempting to fetch default snapshot', { candidate });
+          const fetchStart = sharedDataNow();
+          const response = await fetch(candidate, { cache: 'no-store' });
+          if (!response.ok) {
+            continue;
+          }
+          const snapshot = await response.json();
+          window.SharedDataCache.defaultSnapshot = snapshot;
+          window.SharedDataCache.snapshotData = snapshot?.data || null;
+          const duration = (sharedDataNow() - fetchStart).toFixed(1);
+          const counts = snapshot?.data
+            ? {
+                pollutants: snapshot.data.pollutants?.length || 0,
+                categories: snapshot.data.categories?.length || 0,
+                rows: snapshot.data.timeseries?.length || snapshot.data.rows?.length || 0,
+                years: snapshot.data.years?.length || 0
+              }
+            : null;
+          sharedDataInfoLog('Default snapshot loaded', {
+            candidate,
+            durationMs: Number(duration),
+            counts
+          });
+          return snapshot;
+        } catch (error) {
+          sharedDataDebugLog(`Default snapshot fetch failed for ${candidate}:`, error);
+        }
       }
-      return snapshot;
+      sharedDataInfoLog('Default snapshot unavailable after checking configured paths');
+      return null;
     })();
   }
 
@@ -526,12 +396,6 @@ async function loadHeroDataset(options = {}) {
     return payload;
   })().catch(error => {
     cache.heroCache.delete(normalized.cacheKey);
-    reportSharedSupabaseFailure({
-      label: 'hero-dataset',
-      source: 'shared-hero-dataset',
-      reason: 'loadHeroDataset',
-      error
-    });
     throw error;
   });
 
@@ -584,11 +448,6 @@ async function loadSharedData() {
     cache.isLoading = false;
     cache.loadPromise = null;
     cache.fullBootstrapPromise = null;
-    reportSharedSupabaseFailure({
-      source: 'shared-loader-load',
-      reason: 'loadSharedData',
-      error
-    });
     throw error;
   }
 }
@@ -631,12 +490,6 @@ async function loadDataFromSupabase() {
           durationMs: Number(duration),
           message: response.error.message || String(response.error)
         });
-        reportSharedSupabaseFailure({
-          label,
-          durationMs: Number(duration),
-          error: response.error,
-          source: 'shared-loader-query'
-        });
       } else {
         sharedDataInfoLog('Supabase query completed', {
           label,
@@ -645,20 +498,6 @@ async function loadDataFromSupabase() {
         });
       }
       return response;
-    }).catch(error => {
-      const duration = Number((sharedDataNow() - start).toFixed(1));
-      sharedDataInfoLog('Supabase query threw', {
-        label,
-        durationMs: duration,
-        message: error?.message || String(error)
-      });
-      reportSharedSupabaseFailure({
-        label,
-        durationMs: duration,
-        error,
-        source: 'shared-loader-query'
-      });
-      throw error;
     });
   };
   
@@ -832,12 +671,6 @@ window.SharedDataLoader = {
   getAllNfrCodes,
   isDataLoaded,
   clearCache
-};
-
-window.SharedSnapshotLoader = window.SharedSnapshotLoader || {
-  fetchDefaultSnapshotDirect: fetchDefaultSnapshotFromPaths,
-  normalizeSnapshotPayload: normalizeDefaultSnapshotPayload,
-  getDefaultSnapshotPaths: () => DEFAULT_SNAPSHOT_PATHS.slice()
 };
 
 sharedDataDebugLog('Shared Data Loader initialized');

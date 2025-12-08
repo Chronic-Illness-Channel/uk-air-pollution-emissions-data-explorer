@@ -3,48 +3,37 @@
  * Used by all NAEI data viewer applications
  */
 
-const runtimeEnv = resolveRuntimeEnv();
+const FALLBACK_SUPABASE_URL = 'https://buqarqyqlugwaabuuyfy.supabase.co';
+const FALLBACK_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1cWFycXlxbHVnd2FhYnV1eWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyOTczNDEsImV4cCI6MjA3Njg3MzM0MX0._zommN8QkzS0hY__N7KfuIaalKWG-PrSPq1BWg_BBjg';
+const FALLBACK_SUPABASE_STORAGE_KEY_BASE = 'sb-buqarqyqlugwaabuuyfy-auth-token';
 
-const SUPABASE_URL = getRequiredValue(runtimeEnv, ['url', 'SUPABASE_URL'], 'Supabase URL');
-const SUPABASE_KEY = getRequiredValue(runtimeEnv, ['key', 'SUPABASE_KEY'], 'Supabase anon key');
-const SUPABASE_STORAGE_KEY_BASE = runtimeEnv.storageKeyBase
-  || runtimeEnv.SUPABASE_STORAGE_KEY_BASE
-  || deriveStorageKeyBase(SUPABASE_URL);
+const runtimeEnv = (() => {
+  const env = window.__NAEI_SUPABASE_CONFIG
+    || window.__NAEI_SUPABASE_CONFIG__
+    || null;
+  return (env && typeof env === 'object') ? env : null;
+})();
+
+const SUPABASE_URL = runtimeEnv?.url || runtimeEnv?.SUPABASE_URL || FALLBACK_SUPABASE_URL;
+const SUPABASE_KEY = runtimeEnv?.key || runtimeEnv?.SUPABASE_KEY || FALLBACK_SUPABASE_KEY;
+const SUPABASE_STORAGE_KEY_BASE = runtimeEnv?.storageKeyBase
+  || runtimeEnv?.SUPABASE_STORAGE_KEY_BASE
+  || deriveStorageKeyBase(SUPABASE_URL)
+  || FALLBACK_SUPABASE_STORAGE_KEY_BASE;
 
 // Maintain one Supabase client per scoped storage key to avoid duplicate GoTrue instances
 window.__NAEI_SUPABASE_CLIENTS = window.__NAEI_SUPABASE_CLIENTS || {};
 
-function resolveRuntimeEnv() {
-  const env = window.__NAEI_SUPABASE_CONFIG
-    || window.__NAEI_SUPABASE_CONFIG__
-    || null;
-  if (!env || typeof env !== 'object') {
-    throw new Error('[SupabaseConfig] Supabase runtime config missing. Load SharedResources/supabase-env.js (or define window.__NAEI_SUPABASE_CONFIG) before supabase-config.js.');
-  }
-  return env;
-}
-
-function getRequiredValue(source, keys, label) {
-  for (const key of keys) {
-    const value = source?.[key];
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-  }
-  const preferred = keys[0];
-  throw new Error(`[SupabaseConfig] Missing ${label}. Provide "${preferred}" on window.__NAEI_SUPABASE_CONFIG before loading supabase-config.js.`);
-}
-
 function deriveStorageKeyBase(url) {
+  if (!url) {
+    return null;
+  }
   try {
-    const hostname = new URL(url).hostname || '';
-    const ref = hostname.split('.')[0];
-    if (!ref) {
-      throw new Error('hostname missing');
-    }
+    const ref = new URL(url).hostname.split('.')[0];
     return `sb-${ref}-auth-token`;
   } catch (error) {
-    throw new Error('[SupabaseConfig] Unable to derive storageKeyBase from Supabase URL. Provide "storageKeyBase" in window.__NAEI_SUPABASE_CONFIG.');
+    console.warn('Unable to derive Supabase storage key from URL, using fallback.', error);
+    return null;
   }
 }
 

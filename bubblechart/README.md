@@ -18,7 +18,7 @@ The application uses a modular JavaScript architecture with shared resources:
 
 ### Shared Resources (from `../SharedResources/`)
 - `supabase-config.js` - Database connection configuration
-- `analytics.js` - Lightweight site-wide analytics (page view + interaction)
+- `analytics.js` - Privacy-friendly usage tracking
 - `colors.js` - Consistent color palette management
 - `common-styles.css` - Base styling shared across NAEI viewers
 - `images/` - Logo, favicon, and social media icons

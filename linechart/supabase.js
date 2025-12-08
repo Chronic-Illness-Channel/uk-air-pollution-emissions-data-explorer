@@ -7,14 +7,6 @@
 // Initialize Supabase client and analytics lazily to avoid dependency issues
 let supabase = null;
 
-function matchesLineChartParam(value) {
-  if (value === null || value === undefined) {
-    return false;
-  }
-  const normalized = String(value).trim().toLowerCase();
-  return normalized === '2' || normalized === 'line' || normalized === 'linechart';
-}
-
 function getLineSearchParams() {
   if (window.__lineSupabaseCachedSearchParams) {
     return window.__lineSupabaseCachedSearchParams;
@@ -36,9 +28,7 @@ function getLineSearchParams() {
 
   try {
     const chartParam = params.get('chart');
-    const pageParam = params.get('page');
-    const targetsLineChart = matchesLineChartParam(chartParam) || matchesLineChartParam(pageParam);
-    if (!targetsLineChart) {
+    if (chartParam && chartParam !== '2') {
       const overrideKeys = [
         'pollutant','pollutant_id','pollutantId',
         'category','categories','category_id','categoryIds','category_ids',
@@ -84,34 +74,6 @@ const lineSupabaseInfoLog = (...args) => {
 const lineSupabaseWarnLog = (...args) => {
   (lineSupabaseOriginalConsole.warn || lineSupabaseOriginalConsole.info || (() => {}))('[Linechart data]', ...args);
 };
-const LINE_SUPABASE_MAX_ATTEMPTS = 3;
-const LINE_SUPABASE_RETRY_DELAY_MS = 500;
-const lineRetryDelay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function withLineSupabaseRetries(taskFn, options = {}) {
-  const maxAttempts = Math.max(1, Number(options.maxAttempts) || LINE_SUPABASE_MAX_ATTEMPTS);
-  const delayMs = Math.max(0, Number(options.delayMs) || LINE_SUPABASE_RETRY_DELAY_MS);
-  const label = options.label || 'supabase-task';
-  let attempt = 0;
-  let lastError = null;
-
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      return await taskFn(attempt);
-    } catch (error) {
-      lastError = error;
-      const message = error?.message || String(error);
-      lineSupabaseInfoLog('Supabase attempt failed', { label, attempt, maxAttempts, message });
-      if (attempt < maxAttempts) {
-        await lineRetryDelay(delayMs);
-      }
-    }
-  }
-
-  const finalError = lastError || new Error(`${label} failed after ${maxAttempts} attempts`);
-  throw finalError;
-}
 let supabaseUnavailableLogged = false;
 let localSessionId = null;
 
@@ -148,17 +110,6 @@ const lineUrlOverrideParams = [
   'category','categories','category_id','categoryIds','category_ids',
   'dataset','start_year','end_year','year'
 ];
-const systemAnalyticsEvents = new Set([
-  'page_drawn',
-  'sbase_data_queried',
-  'sbase_data_loaded',
-  'sbase_data_error',
-  'json_data_loaded',
-  'linechart_drawn'
-]);
-const LINE_SUPABASE_DATA_SOURCES = new Set(['hero', 'shared-bootstrap', 'shared-loader', 'direct', 'cache']);
-const LINE_FAILURE_EVENT_COOLDOWN_MS = 60000;
-const lineFailureEventScopes = new Map();
 let lineHasFullDataset = false;
 let lineDatasetSource = null;
 let lineFullDatasetPromise = null;
@@ -409,36 +360,6 @@ function lineCollectMetadataCategories() {
   return aggregated;
 }
 
-function lineChartIsActive() {
-  const chartParam = lineSupabaseUrlParams.get('chart');
-  const pageParam = lineSupabaseUrlParams.get('page');
-  const explicitTarget = matchesLineChartParam(chartParam) || matchesLineChartParam(pageParam);
-  if (explicitTarget) {
-    return true;
-  }
-
-  try {
-    const parentSearch = (window.parent && window.parent !== window)
-      ? window.parent.location?.search
-      : null;
-    const parentParams = parentSearch ? new URLSearchParams(parentSearch) : null;
-    const parentChart = parentParams?.get('chart');
-    if (parentChart) {
-      const normalized = parentChart.trim().toLowerCase();
-      if (normalized === '1' || normalized === 'bubble' || normalized === 'bubblechart') {
-        return false;
-      }
-      if (normalized === '2' || normalized === 'line' || normalized === 'linechart') {
-        return true;
-      }
-    }
-  } catch (error) {
-    /* ignore cross-origin errors */
-  }
-
-  return true;
-}
-
 function lineUsesDefaultSelection() {
   if (lineSupabaseUrlParams.has('dataset')) {
     return false;
@@ -487,9 +408,6 @@ function lineUsesDefaultSelection() {
 }
 
 function lineHasUrlOverrides() {
-  if (!lineChartIsActive()) {
-    return false;
-  }
   if (!lineUrlOverrideParams.some(param => lineSupabaseUrlParams.has(param))) {
     return false;
   }
@@ -561,44 +479,6 @@ function parseLineNameList(value) {
   return value.split(',').map(part => part.trim()).filter(Boolean);
 }
 
-function getLineSharedSnapshotHelper() {
-  if (window.__lineSnapshotHelper) {
-    return window.__lineSnapshotHelper;
-  }
-
-  let helper = null;
-  try {
-    if (window.parent && window.parent !== window && window.parent.SharedSnapshotLoader) {
-      helper = window.parent.SharedSnapshotLoader;
-    }
-  } catch (error) {
-    helper = null;
-  }
-
-  if (!helper && window.SharedSnapshotLoader) {
-    helper = window.SharedSnapshotLoader;
-  }
-
-  window.__lineSnapshotHelper = helper || null;
-  return window.__lineSnapshotHelper;
-}
-
-function normalizeLineSnapshot(snapshot) {
-  const helper = getLineSharedSnapshotHelper();
-  if (helper?.normalizeSnapshotPayload) {
-    return helper.normalizeSnapshotPayload(snapshot);
-  }
-  if (!snapshot?.data) {
-    return null;
-  }
-  const data = snapshot.data;
-  const categories = data.categories || data.groups || [];
-  return {
-    pollutants: data.pollutants || [],
-    categories,
-    rows: data.timeseries || data.rows || data.data || []
-  };
-}
 function buildLineHeroOptions() {
   const pollutantIds = parseLineIdList(
     lineSupabaseUrlParams.get('pollutant_id')
@@ -670,157 +550,12 @@ async function loadLineHeroDataset(sharedLoader) {
  * @param {string} eventName - Type of event to track
  * @param {Object} details - Additional event data
  */
-async function performLineAnalyticsWrite(eventName, details = {}) {
-  const normalizedName = typeof eventName === 'string'
-    ? eventName.trim()
-    : (eventName || '');
-  const payload = { ...details };
-  const isSystemEvent = systemAnalyticsEvents.has(normalizedName);
-
-  try {
-    if (window.SiteAnalytics) {
-      const tracker = isSystemEvent
-        ? window.SiteAnalytics.trackSystem
-        : window.SiteAnalytics.trackInteraction;
-      if (typeof tracker === 'function') {
-        await tracker(normalizedName, payload);
-        return true;
-      }
-    }
-
-    const client = ensureInitialized();
-    if (client && window.Analytics?.trackAnalytics) {
-      const legacyPayload = isSystemEvent
-        ? { ...payload, __eventType: 'system' }
-        : payload;
-      await window.Analytics.trackAnalytics(client, normalizedName, legacyPayload);
-      return true;
-    }
-  } catch (error) {
-    lineSupabaseInfoLog('Analytics write skipped', {
-      event: normalizedName || 'unknown',
-      message: error?.message || String(error)
-    });
-  }
-
-  return false;
-}
-
 async function trackAnalytics(eventName, details = {}) {
-  try {
-    return await performLineAnalyticsWrite(eventName, details);
-  } catch (error) {
-    lineSupabaseInfoLog('Analytics tracking failed', {
-      event: eventName || 'unknown',
-      message: error?.message || String(error)
-    });
-    return false;
+  // Use shared Analytics module
+  const client = ensureInitialized();
+  if (client && window.Analytics) {
+    await window.Analytics.trackAnalytics(client, eventName, details);
   }
-}
-
-function shouldEmitLineFailureEvent(scopeKey = 'linechart', forceEvent = false) {
-  if (forceEvent) {
-    lineFailureEventScopes.set(scopeKey, Date.now());
-    return true;
-  }
-  const now = Date.now();
-  const last = lineFailureEventScopes.get(scopeKey) || 0;
-  if (now - last < LINE_FAILURE_EVENT_COOLDOWN_MS) {
-    return false;
-  }
-  lineFailureEventScopes.set(scopeKey, now);
-  return true;
-}
-
-function swallowLinePromise(promise) {
-  if (promise && typeof promise.then === 'function' && typeof promise.catch === 'function') {
-    promise.catch(() => {});
-  }
-}
-
-function resolveLineLoadMode(source) {
-  switch (source) {
-    case 'hero':
-      return 'hero';
-    case 'shared-bootstrap':
-      return 'full-bootstrap';
-    case 'shared-loader':
-      return 'full-shared-loader';
-    case 'cache':
-      return 'full-cache';
-    case 'direct':
-      return 'full-direct';
-    default:
-      return 'unknown';
-  }
-}
-
-function emitLineDatasetLoadedMetrics({ source, rowsCount = 0, startedAt = null, fullDataset = true } = {}) {
-  if (!source || !LINE_SUPABASE_DATA_SOURCES.has(source)) {
-    return Promise.resolve(false);
-  }
-
-  const durationMs = typeof startedAt === 'number'
-    ? Number((lineSupabaseNow() - startedAt).toFixed(1))
-    : null;
-
-  return trackAnalytics('sbase_data_loaded', {
-    page: 'linechart',
-    source,
-    loadMode: resolveLineLoadMode(source),
-    durationMs,
-    rows: rowsCount,
-    fullDataset: Boolean(fullDataset)
-  });
-}
-
-function recordLineSupabaseFailure(meta = {}) {
-  const error = meta.error;
-  const message = meta.message || error?.message || 'Line chart Supabase request failed';
-  const source = meta.source || meta.label || 'linechart-supabase';
-  const durationMs = typeof meta.durationMs === 'number' ? meta.durationMs : (meta.durationMs || null);
-  const attempt = typeof meta.attempt === 'number' ? meta.attempt : (meta.attempt || null);
-  const reason = meta.reason || null;
-  const analyticsPayload = {
-    page: 'linechart',
-    source,
-    message,
-    durationMs,
-    attempt,
-    reason,
-    errorCode: error?.code || null
-  };
-
-  const pageSlug = meta.pageSlug || '/linechart';
-  const scopeKey = meta.scopeKey || 'linechart';
-  const shouldEmitAnalytics = shouldEmitLineFailureEvent(scopeKey, Boolean(meta.forceEvent));
-
-  const tasks = [];
-  if (shouldEmitAnalytics) {
-    tasks.push(trackAnalytics('sbase_data_error', analyticsPayload));
-  }
-
-  if (window.SiteErrors?.log) {
-    tasks.push(window.SiteErrors.log({
-      pageSlug,
-      source,
-      severity: meta.severity || 'error',
-      message,
-      error_code: error?.code || null,
-      details: {
-        ...meta.details,
-        durationMs,
-        attempt,
-        reason,
-        stack: error?.stack || null
-      }
-    }));
-  }
-
-  if (!tasks.length) {
-    return Promise.resolve([]);
-  }
-  return Promise.allSettled(tasks);
 }
 
 /**
@@ -1019,12 +754,6 @@ function triggerLineFullDatasetBootstrap(sharedLoader, reason = 'line-chart') {
       categories: normalized.categories.length,
       rows: normalized.rows?.length || globalRows.length || 0
     });
-    swallowLinePromise(emitLineDatasetLoadedMetrics({
-      source,
-      rowsCount: normalized.rows?.length || globalRows.length || 0,
-      startedAt: start,
-      fullDataset: true
-    }));
     return normalized;
   };
 
@@ -1032,18 +761,12 @@ function triggerLineFullDatasetBootstrap(sharedLoader, reason = 'line-chart') {
     const loader = sharedLoader ?? resolveLineSharedLoader();
 
     if (loader?.bootstrapFullDataset) {
-      const payload = await withLineSupabaseRetries(
-        () => loader.bootstrapFullDataset(bootstrapReason),
-        { label: 'shared-bootstrap' }
-      );
+      const payload = await loader.bootstrapFullDataset(bootstrapReason);
       return applyFromPayload(payload, 'shared-bootstrap');
     }
 
     if (loader?.loadSharedData) {
-      const payload = await withLineSupabaseRetries(
-        () => loader.loadSharedData(),
-        { label: 'shared-loader' }
-      );
+      const payload = await loader.loadSharedData();
       return applyFromPayload(payload, 'shared-loader');
     }
 
@@ -1052,13 +775,6 @@ function triggerLineFullDatasetBootstrap(sharedLoader, reason = 'line-chart') {
   })().catch(error => {
     lineFullDatasetPromise = null;
     lineSupabaseWarnLog('Failed to hydrate full dataset', error.message || error);
-    swallowLinePromise(recordLineSupabaseFailure({
-      source: 'line-bootstrap',
-      label: 'shared-bootstrap',
-      reason: bootstrapReason,
-      durationMs: Number((lineSupabaseNow() - start).toFixed(1)),
-      error
-    }));
     throw error;
   });
 
@@ -1105,393 +821,218 @@ function waitForFirstDatasetCandidate(promises = [], logError = () => {}) {
   });
 }
 
-function triggerLineHydration(sharedLoader, reason) {
-  triggerLineFullDatasetBootstrap(sharedLoader, reason).catch(error => {
-    lineSupabaseInfoLog('Line full dataset hydration failed', {
-      reason,
-      message: error?.message || String(error)
-    });
-  });
-}
-
 /**
- * Load all data for the line chart (mirrors the bubble chart bootstrap flow)
- * @param {Object} [options]
- * @param {boolean} [options.useDefaultSnapshot]
+ * Load all data from Supabase (using shared data loader)
  */
-async function loadData(options = {}) {
-  lineSupabaseLog('Loading line chart data using shared data loader...');
+async function loadData() {
+  lineSupabaseLog("Loading line chart data using shared data loader...");
 
   const sharedLoader = resolveLineSharedLoader();
-  const sharedSnapshotHelper = getLineSharedSnapshotHelper();
-  const urlOverridesActive = lineHasUrlOverrides();
-  const { useDefaultSnapshot = !urlOverridesActive } = options;
-  const defaultChartMode = Boolean(useDefaultSnapshot);
-  const snapshotSourceAvailable = Boolean(
-    sharedLoader?.loadDefaultSnapshot
-    || sharedSnapshotHelper?.fetchDefaultSnapshotDirect
-  );
-  const requestDefaultSnapshot = () => {
-    if (sharedLoader?.loadDefaultSnapshot) {
-      return sharedLoader.loadDefaultSnapshot();
-    }
-    if (sharedSnapshotHelper?.fetchDefaultSnapshotDirect) {
-      return sharedSnapshotHelper.fetchDefaultSnapshotDirect();
-    }
-    return null;
-  };
-  const selectCategoriesArray = (source) => {
-    if (!source) {
-      return [];
-    }
-    if (Array.isArray(source.categories)) {
-      return source.categories;
-    }
-    if (Array.isArray(source.groups)) {
-      return source.groups;
-    }
-    return [];
-  };
-
-  const loadStartedAt = lineSupabaseNow();
+  const canUseSnapshot = !lineHasUrlOverrides();
   let snapshotPromise = null;
   let snapshotRequestedAt = null;
-  let snapshotDuration = null;
-  let snapshotGeneratedAt = null;
+
+  if (canUseSnapshot && sharedLoader?.loadDefaultSnapshot) {
+    snapshotRequestedAt = lineSupabaseNow();
+    snapshotPromise = sharedLoader.loadDefaultSnapshot();
+  }
 
   let pollutants = [];
   let categories = [];
   let rows = [];
-  const haveData = () => pollutants.length && categories.length && rows.length;
   let datasetSource = null;
   let datasetIsFull = false;
 
-  try {
-    lineSupabaseInfoLog('Line chart snapshot eligibility', {
-      defaultChartMode,
-      snapshotSourceAvailable,
-      urlOverridesActive,
-      sharedLoaderAvailable: Boolean(sharedLoader)
-    });
-    await trackAnalytics('sbase_data_queried', {
-      page: 'linechart',
-      hasUrlOverrides: urlOverridesActive,
-      snapshotEligible: defaultChartMode && snapshotSourceAvailable,
-      sharedLoaderAvailable: Boolean(sharedLoader),
-      timestamp: new Date().toISOString()
-    });
+  if (sharedLoader?.isDataLoaded?.()) {
+    lineSupabaseLog("Using cached data from shared loader");
+    const cachedData = sharedLoader.getCachedData();
+    pollutants = cachedData.pollutants;
+    categories = cachedData.categories || cachedData.groups;
+    rows = cachedData.timeseries;
+    datasetIsFull = true;
+    datasetSource = 'cache';
+  } else if (sharedLoader) {
+    const raceCandidates = [];
 
-    if (sharedLoader?.isDataLoaded?.()) {
-      lineSupabaseLog('Using cached data from shared loader');
-      const cachedData = sharedLoader.getCachedData();
-      if (cachedData) {
-        pollutants = cachedData.pollutants || [];
-        categories = selectCategoriesArray(cachedData);
-        rows = cachedData.timeseries || cachedData.rows || [];
-        if (haveData()) {
-          datasetIsFull = true;
-          datasetSource = 'cache';
-        }
-      }
-    }
-
-    const canShortCircuitSnapshot = !haveData()
-      && defaultChartMode
-      && snapshotSourceAvailable
-      && !sharedLoader?.isDataLoaded?.();
-
-    if (canShortCircuitSnapshot) {
-      if (!snapshotPromise) {
-        snapshotRequestedAt = lineSupabaseNow();
-        snapshotPromise = requestDefaultSnapshot();
-      }
-
-      if (snapshotPromise) {
-        if (!lineHasFullDataset) {
-          triggerLineHydration(sharedLoader, 'snapshot-prefetch');
-        }
-
-        const snapshot = await snapshotPromise.catch(error => {
-          lineSupabaseInfoLog('Immediate line chart snapshot failed', {
+    const bootstrapPromise = triggerLineFullDatasetBootstrap(sharedLoader, 'initial-race');
+    raceCandidates.push(
+      bootstrapPromise
+        .then(payload => {
+          if (payload?.pollutants?.length || payload?.timeseries?.length) {
+            return { source: 'supabase', payload };
+          }
+          return null;
+        })
+        .catch(error => {
+          lineSupabaseInfoLog('Supabase bootstrap race candidate failed', {
             message: error?.message || String(error)
           });
           return null;
-        });
+        })
+    );
 
-        if (snapshot?.data) {
-          const normalizedSnapshot = normalizeLineSnapshot(snapshot) || { pollutants: [], categories: [], rows: [] };
-          const snapshotCategories = selectCategoriesArray(normalizedSnapshot);
-          pollutants = normalizedSnapshot.pollutants || [];
-          categories = snapshotCategories;
-          rows = normalizedSnapshot.rows || [];
-          datasetIsFull = false;
-          datasetSource = 'snapshot';
-          snapshotDuration = snapshotRequestedAt
-            ? Number((lineSupabaseNow() - snapshotRequestedAt).toFixed(1))
-            : null;
-          snapshotGeneratedAt = normalizedSnapshot.generatedAt || snapshot.generatedAt || null;
-
-          lineSupabaseInfoLog('Line chart rendering from default JSON snapshot (immediate)', {
-            durationMs: snapshotDuration,
-            generatedAt: snapshotGeneratedAt,
-            summary: {
-              pollutants: pollutants.length,
-              categories: categories.length,
-              rows: rows.length
+    if (snapshotPromise) {
+      raceCandidates.push(
+        snapshotPromise
+          .then(snapshot => {
+            if (snapshot?.data) {
+              return { source: 'snapshot', snapshot };
             }
-          });
-
-          await trackAnalytics('json_data_loaded', {
-            page: 'linechart',
-            durationMs: snapshotDuration,
-            generatedAt: snapshotGeneratedAt,
-            rows: rows.length,
-            pollutants: pollutants.length,
-            categories: categories.length
-          });
-        } else {
-          snapshotPromise = null;
-        }
-      }
+            return null;
+          })
+          .catch(error => {
+            lineSupabaseInfoLog('Default snapshot race candidate failed', {
+              message: error?.message || String(error)
+            });
+            return null;
+          })
+      );
     }
 
-    if (!haveData() && sharedLoader) {
-      const raceCandidates = [];
+    const initialResult = await waitForFirstDatasetCandidate(raceCandidates, error => {
+      lineSupabaseInfoLog('Initial dataset candidate rejected', {
+        message: error?.message || String(error)
+      });
+    });
 
-      if (!sharedLoader.isDataLoaded?.()) {
-        const bootstrapPromise = triggerLineFullDatasetBootstrap(sharedLoader, 'initial-race');
-        raceCandidates.push(
-          bootstrapPromise
-            .then(payload => {
-              if (payload?.pollutants?.length || payload?.timeseries?.length) {
-                return { source: 'supabase', payload };
-              }
-              return null;
-            })
-            .catch(error => {
-              lineSupabaseInfoLog('Supabase bootstrap race candidate failed', {
-                message: error?.message || String(error)
-              });
-              return null;
-            })
-        );
-      }
-
-      if (defaultChartMode && snapshotSourceAvailable) {
-        snapshotRequestedAt = lineSupabaseNow();
-        if (!snapshotPromise) {
-          snapshotPromise = requestDefaultSnapshot();
-        }
-        if (snapshotPromise) {
-          raceCandidates.push(
-            snapshotPromise
-              .then(snapshot => {
-                if (snapshot?.data) {
-                  return { source: 'snapshot', snapshot };
-                }
-                return null;
-              })
-              .catch(error => {
-                lineSupabaseInfoLog('Default snapshot race candidate failed', {
-                  message: error?.message || String(error)
-                });
-                return null;
-              })
-          );
-        }
-      }
-
-      if (raceCandidates.length) {
-        const initialResult = await waitForFirstDatasetCandidate(raceCandidates, error => {
-          lineSupabaseInfoLog('Initial dataset candidate rejected', {
-            message: error?.message || String(error)
-          });
-        });
-
-        if (initialResult?.source === 'supabase') {
-          const payload = initialResult.payload || {};
-          pollutants = payload.pollutants || [];
-          categories = selectCategoriesArray(payload);
-          rows = payload.timeseries || payload.rows || payload.data || [];
-          datasetIsFull = true;
-          datasetSource = 'shared-bootstrap';
-          lineHasFullDataset = true;
-          lineSupabaseInfoLog('Line chart fulfilled via initial Supabase bootstrap', {
-            pollutants: pollutants.length,
-            categories: categories.length,
-            rows: rows.length
-          });
-        } else if (initialResult?.source === 'snapshot') {
-          const normalizedSnapshot = normalizeLineSnapshot(initialResult.snapshot) || { pollutants: [], categories: [], rows: [] };
-          const snapshotCategories = selectCategoriesArray(normalizedSnapshot);
-          pollutants = normalizedSnapshot.pollutants || [];
-          categories = snapshotCategories;
-          rows = normalizedSnapshot.rows || [];
-          datasetIsFull = false;
-          datasetSource = 'snapshot';
-          snapshotDuration = snapshotRequestedAt
-            ? Number((lineSupabaseNow() - snapshotRequestedAt).toFixed(1))
-            : null;
-          snapshotGeneratedAt = initialResult.snapshot?.generatedAt || null;
-          lineSupabaseInfoLog('Line chart using default JSON snapshot', {
-            durationMs: snapshotDuration,
-            generatedAt: snapshotGeneratedAt,
-            summary: {
-              pollutants: pollutants.length,
-              categories: categories.length,
-              rows: rows.length
-            }
-          });
-          await trackAnalytics('json_data_loaded', {
-            page: 'linechart',
-            durationMs: snapshotDuration,
-            generatedAt: snapshotGeneratedAt,
-            rows: rows.length,
-            pollutants: pollutants.length,
-            categories: categories.length
-          });
-        }
-      }
-    }
-
-    if (!haveData() && sharedLoader?.isDataLoaded?.()) {
-      const cachedData = sharedLoader.getCachedData();
-      if (cachedData) {
-        pollutants = cachedData.pollutants || [];
-        categories = selectCategoriesArray(cachedData);
-        rows = cachedData.timeseries || cachedData.rows || [];
-        if (haveData()) {
-          datasetIsFull = true;
-          datasetSource = 'cache';
-        }
-      }
-    }
-
-    if (!haveData()) {
-      const heroDataset = await loadLineHeroDataset(sharedLoader);
-      const heroCategories = selectCategoriesArray(heroDataset);
-      if (heroDataset?.pollutants?.length && heroCategories.length) {
-        pollutants = heroDataset.pollutants;
-        categories = heroCategories;
-        rows = heroDataset.timeseries || heroDataset.rows || [];
-        datasetIsFull = false;
-        datasetSource = 'hero';
-        lineSupabaseInfoLog('Line chart hydrated via Supabase hero dataset', {
+    if (initialResult?.source === 'supabase') {
+      const payload = initialResult.payload || {};
+      pollutants = payload.pollutants || [];
+      categories = payload.categories || payload.groups || [];
+      rows = payload.timeseries || payload.rows || payload.data || [];
+      datasetIsFull = true;
+      datasetSource = 'shared-bootstrap';
+      lineHasFullDataset = true;
+      lineSupabaseInfoLog('Line chart fulfilled via initial Supabase bootstrap', {
+        pollutants: pollutants.length,
+        categories: categories.length,
+        rows: rows.length
+      });
+    } else if (initialResult?.source === 'snapshot') {
+      const snapshot = initialResult.snapshot;
+      pollutants = snapshot.data.pollutants || [];
+      categories = snapshot.data.categories || snapshot.data.groups || [];
+      rows = snapshot.data.timeseries || snapshot.data.rows || snapshot.data.data || [];
+      datasetIsFull = false;
+      datasetSource = 'snapshot';
+      const snapshotDuration = snapshotRequestedAt
+        ? Number((lineSupabaseNow() - snapshotRequestedAt).toFixed(1))
+        : null;
+      lineSupabaseInfoLog('Line chart using default JSON snapshot', {
+        durationMs: snapshotDuration,
+        generatedAt: snapshot.generatedAt || null,
+        summary: {
           pollutants: pollutants.length,
           categories: categories.length,
           rows: rows.length
-        });
-        scheduleLineFullDataset(sharedLoader, 'hero');
+        }
+      });
+    }
+  }
+
+  if ((!pollutants.length || !categories.length || !rows.length) && sharedLoader?.isDataLoaded?.()) {
+    const cachedData = sharedLoader.getCachedData();
+    pollutants = cachedData.pollutants;
+    categories = cachedData.categories || cachedData.groups;
+    rows = cachedData.timeseries;
+    datasetIsFull = true;
+    datasetSource = 'cache';
+  }
+
+  if (!pollutants.length || !categories.length || !rows.length) {
+    const heroDataset = await loadLineHeroDataset(sharedLoader);
+    if (heroDataset?.pollutants?.length && (heroDataset.categories?.length || heroDataset.groups?.length)) {
+      pollutants = heroDataset.pollutants;
+      categories = heroDataset.categories || heroDataset.groups;
+      rows = heroDataset.timeseries || heroDataset.rows || [];
+      datasetIsFull = false;
+      datasetSource = 'hero';
+      lineSupabaseInfoLog('Line chart hydrated via Supabase hero dataset', {
+        pollutants: pollutants.length,
+        categories: categories.length,
+        rows: rows.length
+      });
+      scheduleLineFullDataset(sharedLoader, 'hero');
+    }
+  }
+
+  if (datasetSource === 'hero') {
+    const selectorMetadata = await loadLineDefaultSelectorMetadata(sharedLoader);
+    if (selectorMetadata) {
+      const metadataPollutants = Array.isArray(selectorMetadata.pollutants)
+        ? selectorMetadata.pollutants
+        : [];
+      const metadataCategories = Array.isArray(selectorMetadata.categories)
+        ? selectorMetadata.categories
+        : (Array.isArray(selectorMetadata.groups) ? selectorMetadata.groups : []);
+
+      if (metadataPollutants.length) {
+        pollutants = lineMergeRecordCollections(
+          pollutants,
+          metadataPollutants,
+          record => {
+            if (record?.id != null) {
+              return record.id;
+            }
+            const name = record?.pollutant || record?.Pollutant || '';
+            return name ? name.toLowerCase() : null;
+          }
+        );
+      }
+
+      if (metadataCategories.length) {
+        categories = lineMergeRecordCollections(
+          categories,
+          metadataCategories,
+          record => {
+            if (record?.id != null) {
+              return record.id;
+            }
+            const title = record?.category_title || record?.group_name || '';
+            return title ? title.toLowerCase() : null;
+          }
+        );
       }
     }
+  }
 
-    if (datasetSource === 'hero') {
-      const selectorMetadata = await loadLineDefaultSelectorMetadata(sharedLoader);
-      if (selectorMetadata) {
-        const metadataPollutants = Array.isArray(selectorMetadata.pollutants)
-          ? selectorMetadata.pollutants
-          : [];
-        const metadataCategories = selectCategoriesArray(selectorMetadata);
-
-        if (metadataPollutants.length) {
-          pollutants = lineMergeRecordCollections(
-            pollutants,
-            metadataPollutants,
-            record => {
-              if (record?.id != null) {
-                return record.id;
-              }
-              const name = record?.pollutant || record?.Pollutant || '';
-              return name ? name.toLowerCase() : null;
-            }
-          );
-        }
-
-        if (metadataCategories.length) {
-          categories = lineMergeRecordCollections(
-            categories,
-            metadataCategories,
-            record => {
-              if (record?.id != null) {
-                return record.id;
-              }
-              const title = record?.category_title || record?.group_name || '';
-              return title ? title.toLowerCase() : null;
-            }
-          );
-        }
-      }
-    }
-
-    if (!haveData()) {
-      if (sharedLoader) {
-        lineSupabaseLog('Loading data through shared loader');
-        try {
-          const sharedData = await sharedLoader.loadSharedData();
-          pollutants = sharedData.pollutants || [];
-          categories = selectCategoriesArray(sharedData);
-          rows = sharedData.timeseries || sharedData.rows || [];
-          datasetIsFull = true;
-          datasetSource = 'shared-loader';
-          lineHasFullDataset = true;
-        } catch (error) {
-          console.error('Failed to load through shared loader, falling back to direct loading:', error);
-          const result = await loadDataDirectly();
-          pollutants = result.pollutants || [];
-          categories = selectCategoriesArray(result);
-          rows = result.rows || [];
-          datasetIsFull = true;
-          datasetSource = 'direct';
-          lineHasFullDataset = true;
-        }
-      } else {
-        lineSupabaseLog('No shared loader available, loading data directly');
+  if (!pollutants.length || !categories.length || !rows.length) {
+    if (sharedLoader) {
+      lineSupabaseLog("Loading data through shared loader");
+      try {
+        const sharedData = await sharedLoader.loadSharedData();
+        pollutants = sharedData.pollutants;
+        categories = sharedData.categories || sharedData.groups;
+        rows = sharedData.timeseries;
+        datasetIsFull = true;
+        datasetSource = 'shared-loader';
+      } catch (error) {
+        console.error("Failed to load through shared loader, falling back to direct loading:", error);
         const result = await loadDataDirectly();
-        pollutants = result.pollutants || [];
-        categories = selectCategoriesArray(result);
-        rows = result.rows || [];
+        pollutants = result.pollutants;
+        categories = result.categories || result.groups;
+        rows = result.rows;
         datasetIsFull = true;
         datasetSource = 'direct';
-        lineHasFullDataset = true;
       }
+    } else {
+      lineSupabaseLog("No shared loader available, loading data directly");
+      const result = await loadDataDirectly();
+      pollutants = result.pollutants;
+      categories = result.categories || result.groups;
+      rows = result.rows;
+      datasetIsFull = true;
+      datasetSource = 'direct';
     }
-
-    if (!haveData()) {
-      throw new Error('Line chart dataset unavailable');
-    }
-
-    const processed = applyLineDataset({ pollutants, categories, groups: categories, rows }, {
-      source: datasetSource,
-      markFullDataset: datasetIsFull
-    });
-
-    if (!datasetIsFull) {
-      const hydrationReason = datasetSource === 'hero'
-        ? 'hero'
-        : (datasetSource === 'snapshot' ? 'snapshot' : 'post-load');
-      triggerLineHydration(sharedLoader, hydrationReason);
-    }
-
-    lineSupabaseLog(`Loaded ${rows.length} timeseries rows; ${allPollutants.length} pollutants; ${allCategories.length} categories`);
-
-    await emitLineDatasetLoadedMetrics({
-      source: datasetSource,
-      rowsCount: rows.length,
-      startedAt: loadStartedAt,
-      fullDataset: Boolean(datasetIsFull)
-    });
-
-    return processed;
-  } catch (error) {
-    console.error('Error loading line chart data:', error);
-    await recordLineSupabaseFailure({
-      source: datasetSource || 'unknown',
-      durationMs: Number((lineSupabaseNow() - loadStartedAt).toFixed(1)),
-      error,
-      reason: 'load-data'
-    });
-    throw error;
   }
+
+  const processed = applyLineDataset({ pollutants, categories, groups: categories, rows }, {
+    source: datasetSource,
+    markFullDataset: datasetIsFull
+  });
+
+  lineSupabaseLog(`Loaded ${rows.length} timeseries rows; ${allPollutants.length} pollutants; ${allCategories.length} categories`);
+  return processed;
 }
 
 
@@ -1499,94 +1040,65 @@ async function loadData(options = {}) {
  * Fallback function for direct data loading (when shared loader fails)
  */
 async function loadDataDirectly() {
-  return withLineSupabaseRetries(async (attempt) => {
-    lineSupabaseLog('Fetching data directly from Supabase...');
+  lineSupabaseLog("Fetching data directly from Supabase...");
 
-    const client = ensureInitialized();
-    if (!client) {
-      throw new Error('Supabase client not available');
-    }
+  const client = ensureInitialized();
+  if (!client) {
+    throw new Error('Supabase client not available');
+  }
 
-    const batchStart = lineSupabaseNow();
-    lineSupabaseInfoLog('Starting direct Supabase fetch for line chart', { attempt });
-    const timedQuery = (label, promise) => {
-      const start = lineSupabaseNow();
-      lineSupabaseInfoLog('Supabase query started', { label, attempt });
-      return promise.then(response => {
-        const duration = Number((lineSupabaseNow() - start).toFixed(1));
-        if (response?.error) {
-          lineSupabaseInfoLog('Supabase query failed', {
-            label,
-            durationMs: duration,
-            attempt,
-            message: response.error.message || String(response.error)
-          });
-          swallowLinePromise(recordLineSupabaseFailure({
-            source: 'line-direct-query',
-            label,
-            durationMs: duration,
-            attempt,
-            reason: 'direct-fetch',
-            error: response.error
-          }));
-        } else {
-          lineSupabaseInfoLog('Supabase query completed', {
-            label,
-            durationMs: duration,
-            attempt,
-            rows: Array.isArray(response?.data) ? response.data.length : 0
-          });
-        }
-        return response;
-      }).catch(error => {
-        const duration = Number((lineSupabaseNow() - start).toFixed(1));
-        lineSupabaseInfoLog('Supabase query threw', {
+  const batchStart = lineSupabaseNow();
+  lineSupabaseInfoLog('Starting direct Supabase fetch for line chart');
+  const timedQuery = (label, promise) => {
+    const start = lineSupabaseNow();
+    lineSupabaseInfoLog('Supabase query started', { label });
+    return promise.then(response => {
+      const duration = Number((lineSupabaseNow() - start).toFixed(1));
+      if (response?.error) {
+        lineSupabaseInfoLog('Supabase query failed', {
           label,
           durationMs: duration,
-          attempt,
-          message: error?.message || String(error)
+          message: response.error.message || String(response.error)
         });
-        swallowLinePromise(recordLineSupabaseFailure({
-          source: 'line-direct-query',
+      } else {
+        lineSupabaseInfoLog('Supabase query completed', {
           label,
           durationMs: duration,
-          attempt,
-          reason: 'direct-fetch',
-          error
-        }));
-        throw error;
-      });
-    };
-
-    const [pollutantsResp, categoriesResp, dataResp] = await Promise.all([
-      timedQuery('naei_global_t_pollutant', client.from('naei_global_t_pollutant').select('*')),
-      timedQuery('naei_global_t_category', client.from('naei_global_t_category').select('*')),
-      timedQuery('naei_2023ds_t_category_data', client.from('naei_2023ds_t_category_data').select('*'))
-    ]);
-
-    if (pollutantsResp.error) throw pollutantsResp.error;
-    if (categoriesResp.error) throw categoriesResp.error;
-    if (dataResp.error) throw dataResp.error;
-
-    const payload = {
-      pollutants: pollutantsResp.data || [],
-      categories: categoriesResp.data || [],
-      groups: categoriesResp.data || [],
-      rows: dataResp.data || []
-    };
-
-    lineSupabaseInfoLog('Direct Supabase fetch completed', {
-      durationMs: Number((lineSupabaseNow() - batchStart).toFixed(1)),
-      attempt,
-      summary: {
-        pollutants: payload.pollutants.length,
-        categories: payload.categories.length,
-        rows: payload.rows.length
+          rows: Array.isArray(response?.data) ? response.data.length : 0
+        });
       }
+      return response;
     });
+  };
 
-    return payload;
-  }, { label: 'direct-fetch' });
+  // Fetch pollutants, categories, and the timeseries table separately
+  const [pollutantsResp, categoriesResp, dataResp] = await Promise.all([
+    timedQuery('naei_global_t_pollutant', client.from('naei_global_t_pollutant').select('*')),
+    timedQuery('naei_global_t_category', client.from('naei_global_t_category').select('*')),
+    timedQuery('naei_2023ds_t_category_data', client.from('naei_2023ds_t_category_data').select('*'))
+  ]);
+
+  if (pollutantsResp.error) throw pollutantsResp.error;
+  if (categoriesResp.error) throw categoriesResp.error;
+  if (dataResp.error) throw dataResp.error;
+
+  const payload = {
+    pollutants: pollutantsResp.data || [],
+    categories: categoriesResp.data || [],
+    groups: categoriesResp.data || [],
+    rows: dataResp.data || []
+  };
+
+  lineSupabaseInfoLog('Direct Supabase fetch completed', {
+    durationMs: Number((lineSupabaseNow() - batchStart).toFixed(1)),
+    summary: {
+      pollutants: payload.pollutants.length,
+      categories: payload.categories.length,
+      rows: payload.rows.length
+    }
+  });
+
+  return payload;
 }
 
 // Create the main export object for this module (defined after all functions)

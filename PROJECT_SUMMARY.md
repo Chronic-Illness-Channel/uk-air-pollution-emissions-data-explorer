@@ -11,7 +11,7 @@ Successfully completed migration to shared resources architecture and created ne
 CIC-test-naei-data/
 ├── Shared Resources/
 │   ├── images/              (Logos, icons, favicon)
-│   ├── analytics.js         (Lightweight site-wide tracking)
+│   ├── analytics.js         (Privacy-friendly tracking)
 │   ├── colors.js            (10-color palette with category mapping)
 │   ├── common-styles.css    (Base styling)
 │   ├── supabase-config.js   (Database configuration)
@@ -47,7 +47,7 @@ CIC-test-naei-data/
   - Exports: `SupabaseConfig.initSupabaseClient()`
   - Single source of truth for database credentials
 
-- **analytics.js**: Lightweight site-wide analytics (page views + interactions)
+- **analytics.js**: Privacy-friendly usage tracking
   - Session tracking with UUID
   - User fingerprinting (privacy-preserving)
   - Country detection via timezone
@@ -191,11 +191,11 @@ Updated version of the line chart viewer using shared resources:
 ## Analytics Events
 
 Standard events tracked across both applications:
-- `page_drawn` / `page_seen` - Shared helper handles initial render plus 30s heartbeats after interaction
-- `bubblechart_seen` / `linechart_seen` - Chart view recorded the first time each iframe is visible (slug-prefixed naming)
-- `bubblechart_drawn` / `linechart_drawn` - Fired when a new pollutant/category/year selection finishes rendering
-- `bubblechart_downloaded`, `bubblechart_data_export`, `linechart_data_export` - Capture every CSV/XLSX/PNG export along with filenames and counts
-- `bubblechart_share_*` / `linechart_share_*` - Share dialog events (button open, URL copy, PNG copy, email launch) prefixed with the chart slug for easier analytics filtering
+- `page_load` - Application initialized
+- `chart_drawn` / `scatter_chart_drawn` - Chart rendered
+- `share_url_copied` - Shareable URL copied
+- `share_png_copied` - Chart image copied
+- `chart_downloaded` / `scatter_chart_downloaded` - PNG downloaded
 
 Opt-out: Add `?analytics=off` to URL
 
@@ -219,7 +219,7 @@ All applications connect to:
 - `naei_global_t_pollutant` - Pollutant definitions and units
 - `naei_global_t_category` - Emission source category definitions
 - `naei_2023ds_t_category_data` - Time-series data (1970-2023)
-- `site_events` - Simplified site-wide analytics (optional)
+- `analytics_events` - Usage tracking (optional)
 
 ## Next Steps
 

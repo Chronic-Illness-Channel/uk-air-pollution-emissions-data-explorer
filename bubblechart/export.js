@@ -27,19 +27,6 @@ const exportLogger = (() => {
   };
 })();
 
-const bubbleChartTracker = () => window.ChartInteractionTracker?.track || window.trackChartInteraction;
-
-function trackBubbleShareEvent(eventLabel, meta = {}) {
-  const tracker = bubbleChartTracker();
-  if (typeof tracker === 'function') {
-    return tracker(eventLabel, meta, {
-      chartType: 'bubble_chart',
-      pageSlug: '/bubblechart'
-    });
-  }
-  return Promise.resolve(false);
-}
-
 function sanitizeFilenameSegment(value) {
   return (value ?? '')
     .toString()
@@ -966,12 +953,15 @@ async function downloadChartPNG() {
     link.click();
 
     // Track analytics
-    trackBubbleShareEvent('bubblechart_downloaded', {
-      year: chartData.year,
-      pollutant: chartData.pollutantName,
-      category_count: categoryCount,
-      filename
-    });
+    if (window.Analytics && supabase) {
+      window.Analytics.trackAnalytics(supabase, 'bubble_chart_downloaded', {
+        year: chartData.year,
+        pollutant: chartData.pollutantName,
+        category_count: categoryCount,
+        filename: filename,
+        chart_type: 'bubble_chart'
+      });
+    }
   } catch (error) {
     console.error('Failed to download chart:', error);
     alert('Failed to download chart: ' + error.message);
@@ -1229,11 +1219,13 @@ function showShareDialog() {
       await navigator.clipboard.writeText(displayShareUrl);
       showCopiedState(copyUrlBtn);
       
-      trackBubbleShareEvent('bubblechart_share_url_copied', {
-        year: chartData.year,
-        pollutant: chartData.pollutantName,
-        category_count: selectedCategoryCount
-      });
+      if (window.Analytics && supabase) {
+        window.Analytics.trackAnalytics(supabase, 'share_url_copied', {
+          year: chartData.year,
+          pollutant: chartData.pollutantName,
+          category_count: selectedCategoryCount
+        });
+      }
       
       setTimeout(() => {
         resetButtonState(copyUrlBtn, copyUrlDefaultHtml, copyUrlDefaultBg);
@@ -1261,11 +1253,13 @@ function showShareDialog() {
         
         showCopiedState(copyPngBtn);
         
-        trackBubbleShareEvent('bubblechart_share_png_copied', {
-          year: chartData.year,
-          pollutant: chartData.pollutantName,
-          category_count: selectedCategoryCount
-        });
+        if (window.Analytics && supabase) {
+          window.Analytics.trackAnalytics(supabase, 'share_png_copied', {
+            year: chartData.year,
+            pollutant: chartData.pollutantName,
+            category_count: selectedCategoryCount
+          });
+        }
         
         setTimeout(() => {
           resetButtonState(copyPngBtn, copyPngDefaultHtml, copyPngDefaultBg);
@@ -1289,12 +1283,13 @@ function showShareDialog() {
     try {
       await copyChartImageSilently();
 
-      trackBubbleShareEvent('bubblechart_share_email_opened', {
-        year: chartData.year,
-        pollutant: chartData.pollutantName,
-        category_count: selectedCategoryCount,
-        share_url: shareUrl
-      });
+      if (window.Analytics && supabase) {
+        window.Analytics.trackAnalytics(supabase, 'email_share_copied', {
+          year: chartData.year,
+          pollutant: chartData.pollutantName,
+          category_count: selectedCategoryCount
+        });
+      }
 
       const emailPayload = window.EmailShareHelper
         ? window.EmailShareHelper.composeEmail({
@@ -1396,12 +1391,14 @@ function exportData(format = 'csv') {
   };
 
   // Track export analytics
-  trackBubbleShareEvent('bubblechart_data_export', {
-    format,
-    pollutant: pollutantName,
-    year,
-    category_count: categoryCount
-  });
+  if (window.Analytics && supabase) {
+    window.Analytics.trackAnalytics(supabase, 'data_export', {
+      format: format,
+      pollutant: pollutantName,
+      year: year,
+      category_count: categoryCount
+    });
+  }
 
   // Build rows
   const rows = [];

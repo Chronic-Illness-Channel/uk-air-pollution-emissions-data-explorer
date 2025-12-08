@@ -11,11 +11,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="UK Air Pollution and Emissions Data Explorer">
   <meta name="twitter:description" content="Interactive charts using UK Government data">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../dist/tailwind.css">
-  <link rel="stylesheet" href="../SharedResources/common-styles.css?v=inter1">
+  <link rel="stylesheet" href="../SharedResources/common-styles.css">
   <link rel="preload" as="image" href="../SharedResources/images/resource-images/GAP-CAN-2026.svg">
   <link rel="preload" as="image" href="../SharedResources/images/resource-images/awair-logo-699x200.svg">
   <link rel="preload" as="image" href="../SharedResources/images/resource-images/ERF logo.svg">
@@ -258,7 +255,7 @@
     }
   </style>
 </head>
-<body data-page-slug="resources-embed">
+<body>
   <main class="chart-shell resources-shell">
     <div class="resources-frame" id="mainContent">
       <div class="title-row">
@@ -564,12 +561,7 @@
       });
 
       window.addEventListener('message', event => {
-        const payload = event?.data;
-        if (!payload) {
-          return;
-        }
-
-        if (payload.type === 'requestHeight') {
+        if (event?.data?.type === 'requestHeight') {
           scheduleHeightUpdate(20, true);
         }
       });
@@ -624,8 +616,5 @@
       });
     })();
   </script>
-  <script src="../SharedResources/supabase-env.js"></script>
-  <script src="../SharedResources/supabase-config.js"></script>
-  <script src="../SharedResources/analytics.js"></script>
 </body>
 </html>

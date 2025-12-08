@@ -16,7 +16,6 @@ const bubbleDataInfoLog = (() => {
 const bubbleDataNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 window.__NAEI_DEBUG__ = window.__NAEI_DEBUG__ || supabaseDebugLoggingEnabled;
 
-
 const bubbleLogger = (() => {
   if (window.BubbleLogger) {
     if (supabaseDebugLoggingEnabled) {
@@ -56,34 +55,6 @@ const supabaseDebugWarn = (...args) => {
   }
   bubbleLogger.warn('[supabase]', ...args);
 };
-const SUPABASE_MAX_ATTEMPTS = 3;
-const SUPABASE_RETRY_DELAY_MS = 500;
-const bubbleRetryDelay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function withSupabaseRetries(taskFn, options = {}) {
-  const maxAttempts = Math.max(1, Number(options.maxAttempts) || SUPABASE_MAX_ATTEMPTS);
-  const delayMs = Math.max(0, Number(options.delayMs) || SUPABASE_RETRY_DELAY_MS);
-  const label = options.label || 'supabase-task';
-  let attempt = 0;
-  let lastError = null;
-
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      return await taskFn(attempt);
-    } catch (error) {
-      lastError = error;
-      const message = error?.message || String(error);
-      bubbleDataInfoLog('Supabase attempt failed', { label, attempt, maxAttempts, message });
-      if (attempt < maxAttempts) {
-        await bubbleRetryDelay(delayMs);
-      }
-    }
-  }
-
-  const finalError = lastError || new Error(`${label} failed after ${maxAttempts} attempts`);
-  throw finalError;
-}
 let supabaseUnavailableLogged = false;
 let localSessionId = null;
 
@@ -116,18 +87,12 @@ function normalizeChartId(value) {
   return normalized;
 }
 
-function isBubbleChartActive(params = getEffectiveBubbleUrlParams()) {
-  const pageParam = normalizeChartId(params.get('page'));
-  if (pageParam) {
-    return pageParam === '1';
-  }
-
+function isBubbleChartActive(params) {
   const chartParam = normalizeChartId(params.get('chart'));
-  if (chartParam) {
-    return chartParam === '1';
+  if (!chartParam) {
+    return true;
   }
-
-  return true;
+  return chartParam === '1';
 }
 
 function getEffectiveBubbleUrlParams() {
@@ -143,28 +108,6 @@ function ensureInitialized() {
     localSessionId = window.Analytics.getSessionId();
   }
   return supabase;
-}
-
-function getBubbleSharedSnapshotHelper() {
-  if (window.__bubbleSnapshotHelper) {
-    return window.__bubbleSnapshotHelper;
-  }
-
-  let helper = null;
-  try {
-    if (window.parent && window.parent !== window && window.parent.SharedSnapshotLoader) {
-      helper = window.parent.SharedSnapshotLoader;
-    }
-  } catch (error) {
-    helper = null;
-  }
-
-  if (!helper && window.SharedSnapshotLoader) {
-    helper = window.SharedSnapshotLoader;
-  }
-
-  window.__bubbleSnapshotHelper = helper || null;
-  return window.__bubbleSnapshotHelper;
 }
 
 // Global data storage
@@ -200,17 +143,6 @@ const urlOverrideParams = [
   'activityCategory','actCategory',
   'dataset','year'
 ];
-const systemAnalyticsEvents = new Set([
-  'page_drawn',
-  'sbase_data_queried',
-  'sbase_data_loaded',
-  'sbase_data_error',
-  'json_data_loaded',
-  'bubblechart_drawn'
-]);
-const BUBBLE_SUPABASE_DATA_SOURCES = new Set(['hero', 'shared-bootstrap', 'shared-loader', 'direct', 'cache']);
-const BUBBLE_FAILURE_EVENT_COOLDOWN_MS = 60000;
-const bubbleFailureEventScopes = new Map();
 let categoryMetadataCache = null;
 let categoryMetadataPromise = null;
 let sharedLoaderReference = null;
@@ -445,46 +377,8 @@ async function loadBubbleHeroDataset(sharedLoader) {
     return heroDataset;
   } catch (error) {
     bubbleDataInfoLog('Bubble hero dataset unavailable', error.message || error);
-    swallowBubblePromise(recordBubbleSupabaseFailure({
-      source: 'hero-dataset',
-      label: 'hero-dataset',
-      reason: 'hero-dataset',
-      error
-    }));
     return null;
   }
-}
-
-function extractBubbleSnapshotData(snapshot) {
-  const helper = getBubbleSharedSnapshotHelper();
-  if (helper?.normalizeSnapshotPayload) {
-    const normalized = helper.normalizeSnapshotPayload(snapshot);
-    if (normalized) {
-      const normalizedCategories = Array.isArray(normalized.categories)
-        ? normalized.categories
-        : (Array.isArray(normalized.groups) ? normalized.groups : []);
-      return {
-        pollutants: normalized.pollutants || [],
-        categories: normalizedCategories,
-        rows: normalized.rows || normalized.timeseries || [],
-        generatedAt: normalized.generatedAt || snapshot?.generatedAt || null
-      };
-    }
-  }
-
-  if (!snapshot?.data) {
-    return null;
-  }
-  const data = snapshot.data;
-  const fallbackCategories = Array.isArray(data.categories)
-    ? data.categories
-    : (Array.isArray(data.groups) ? data.groups : []);
-  return {
-    pollutants: data.pollutants || [],
-    categories: fallbackCategories,
-    rows: data.timeseries || data.rows || data.data || [],
-    generatedAt: snapshot.generatedAt || null
-  };
 }
 
 /**
@@ -492,145 +386,12 @@ function extractBubbleSnapshotData(snapshot) {
  * @param {string} eventName - Type of event to track
  * @param {Object} details - Additional event data
  */
-async function performAnalyticsWrite(eventName, details = {}) {
-  const normalizedName = typeof eventName === 'string'
-    ? eventName.trim()
-    : (eventName || '');
-  const payload = { ...details };
-  const isSystemEvent = systemAnalyticsEvents.has(normalizedName);
-
-  if (window.SiteAnalytics) {
-    const tracker = isSystemEvent
-      ? window.SiteAnalytics.trackSystem
-      : window.SiteAnalytics.trackInteraction;
-    if (typeof tracker === 'function') {
-      await tracker(normalizedName, payload);
-      return true;
-    }
-  }
-
-  const client = ensureInitialized();
-  if (client && window.Analytics?.trackAnalytics) {
-    const legacyPayload = isSystemEvent
-      ? { ...payload, __eventType: 'system' }
-      : payload;
-    await window.Analytics.trackAnalytics(client, normalizedName, legacyPayload);
-    return true;
-  }
-
-  return false;
-}
-
 async function trackAnalytics(eventName, details = {}) {
-  return performAnalyticsWrite(eventName, details);
-}
-
-function shouldEmitBubbleFailureEvent(scopeKey = 'bubble_chart', forceEvent = false) {
-  if (forceEvent) {
-    bubbleFailureEventScopes.set(scopeKey, Date.now());
-    return true;
+  // Use shared Analytics module
+  const client = ensureInitialized();
+  if (client && window.Analytics) {
+    await window.Analytics.trackAnalytics(client, eventName, details);
   }
-  const now = Date.now();
-  const last = bubbleFailureEventScopes.get(scopeKey) || 0;
-  if (now - last < BUBBLE_FAILURE_EVENT_COOLDOWN_MS) {
-    return false;
-  }
-  bubbleFailureEventScopes.set(scopeKey, now);
-  return true;
-}
-
-function swallowBubblePromise(promise) {
-  if (promise && typeof promise.then === 'function' && typeof promise.catch === 'function') {
-    promise.catch(() => {});
-  }
-}
-
-function resolveBubbleLoadMode(source) {
-  switch (source) {
-    case 'hero':
-      return 'hero';
-    case 'shared-bootstrap':
-      return 'full-bootstrap';
-    case 'shared-loader':
-      return 'full-shared-loader';
-    case 'cache':
-      return 'full-cache';
-    case 'direct':
-      return 'full-direct';
-    default:
-      return 'unknown';
-  }
-}
-
-function emitBubbleDatasetLoadedMetrics({ source, rowsCount = 0, startedAt = null, fullDataset = true } = {}) {
-  if (!source || !BUBBLE_SUPABASE_DATA_SOURCES.has(source)) {
-    return Promise.resolve(false);
-  }
-
-  const durationMs = typeof startedAt === 'number'
-    ? Number((bubbleDataNow() - startedAt).toFixed(1))
-    : null;
-
-  return trackAnalytics('sbase_data_loaded', {
-    page: 'bubble_chart',
-    source,
-    loadMode: resolveBubbleLoadMode(source),
-    durationMs,
-    rows: rowsCount,
-    fullDataset: Boolean(fullDataset)
-  });
-}
-
-function recordBubbleSupabaseFailure(meta = {}) {
-  const error = meta.error;
-  const message = meta.message || error?.message || 'Bubble Supabase request failed';
-  const source = meta.source || meta.label || 'bubble-supabase';
-  const durationMs = typeof meta.durationMs === 'number' ? meta.durationMs : (meta.durationMs || null);
-  const attempt = typeof meta.attempt === 'number' ? meta.attempt : (meta.attempt || null);
-  const inactiveChartMode = typeof meta.inactiveChartMode === 'boolean' ? meta.inactiveChartMode : undefined;
-  const reason = meta.reason || null;
-  const analyticsPayload = {
-    page: 'bubble_chart',
-    source,
-    message,
-    durationMs,
-    attempt,
-    reason,
-    inactiveChartMode,
-    errorCode: error?.code || null
-  };
-
-  const pageSlug = meta.pageSlug || '/bubblechart';
-  const scopeKey = meta.scopeKey || 'bubble_chart';
-  const shouldEmitAnalytics = shouldEmitBubbleFailureEvent(scopeKey, Boolean(meta.forceEvent));
-
-  const tasks = [];
-  if (shouldEmitAnalytics) {
-    tasks.push(trackAnalytics('sbase_data_error', analyticsPayload));
-  }
-
-  if (window.SiteErrors?.log) {
-    tasks.push(window.SiteErrors.log({
-      pageSlug,
-      source,
-      severity: meta.severity || 'error',
-      message,
-      error_code: error?.code || null,
-      details: {
-        ...meta.details,
-        durationMs,
-        attempt,
-        reason,
-        inactiveChartMode,
-        stack: error?.stack || null
-      }
-    }));
-  }
-
-  if (!tasks.length) {
-    return Promise.resolve([]);
-  }
-  return Promise.allSettled(tasks);
 }
 
 /**
@@ -780,19 +541,6 @@ function triggerBubbleFullDatasetBootstrap(sharedLoader, reason = 'bubble-chart'
       categories: payload.categories || [],
       rows: payload.timeseries || payload.rows || payload.data || []
     }, source);
-    const hydratedRows = Array.isArray(payload?.timeseries)
-      ? payload.timeseries.length
-      : Array.isArray(payload?.rows)
-        ? payload.rows.length
-        : Array.isArray(payload?.data)
-          ? payload.data.length
-          : 0;
-    swallowBubblePromise(emitBubbleDatasetLoadedMetrics({
-      source,
-      rowsCount: hydratedRows,
-      startedAt: start,
-      fullDataset: true
-    }));
     return payload;
   };
 
@@ -800,10 +548,7 @@ function triggerBubbleFullDatasetBootstrap(sharedLoader, reason = 'bubble-chart'
     const loader = sharedLoader || await resolveSharedLoader();
 
     if (loader?.bootstrapFullDataset) {
-      const payload = await withSupabaseRetries(
-        () => loader.bootstrapFullDataset(bootstrapReason),
-        { label: 'shared-bootstrap' }
-      );
+      const payload = await loader.bootstrapFullDataset(bootstrapReason);
       bubbleDataInfoLog('Bubble chart full dataset bootstrapped via SharedDataLoader', {
         durationMs: Number((bubbleDataNow() - start).toFixed(1)),
         rows: Array.isArray(payload?.timeseries) ? payload.timeseries.length : payload?.rows?.length || 0
@@ -812,10 +557,7 @@ function triggerBubbleFullDatasetBootstrap(sharedLoader, reason = 'bubble-chart'
     }
 
     if (loader?.loadSharedData) {
-      const payload = await withSupabaseRetries(
-        () => loader.loadSharedData(),
-        { label: 'shared-loader' }
-      );
+      const payload = await loader.loadSharedData();
       bubbleDataInfoLog('Bubble chart full dataset loaded via SharedDataLoader fallback', {
         durationMs: Number((bubbleDataNow() - start).toFixed(1)),
         rows: Array.isArray(payload?.timeseries) ? payload.timeseries.length : 0
@@ -832,13 +574,6 @@ function triggerBubbleFullDatasetBootstrap(sharedLoader, reason = 'bubble-chart'
   })().catch(error => {
     bubbleFullDatasetPromise = null;
     console.error('Bubble chart full dataset bootstrap failed:', error);
-    swallowBubblePromise(recordBubbleSupabaseFailure({
-      source: 'bubble-bootstrap',
-      label: 'shared-bootstrap',
-      reason: bootstrapReason,
-      durationMs: Number((bubbleDataNow() - start).toFixed(1)),
-      error
-    }));
     throw error;
   });
 
@@ -846,38 +581,18 @@ function triggerBubbleFullDatasetBootstrap(sharedLoader, reason = 'bubble-chart'
 }
 
 async function loadData(options = {}) {
-  const bubbleActive = isBubbleChartActive();
-  const urlOverridesActive = hasUrlOverrides();
-  const { useDefaultSnapshot = !urlOverridesActive } = options;
+  const { useDefaultSnapshot = !hasUrlOverrides() } = options;
 
   const defaultChartMode = Boolean(useDefaultSnapshot);
   const sharedLoader = await resolveSharedLoader();
-  const allowSupabaseHydration = options.allowSupabaseHydration !== false;
-  const sharedSnapshotHelper = getBubbleSharedSnapshotHelper();
-  const requestDefaultSnapshot = () => {
-    if (sharedLoader?.loadDefaultSnapshot) {
-      return sharedLoader.loadDefaultSnapshot();
-    }
-    if (sharedSnapshotHelper?.fetchDefaultSnapshotDirect) {
-      return sharedSnapshotHelper.fetchDefaultSnapshotDirect();
-    }
-    return null;
-  };
-  const snapshotSourceAvailable = Boolean(sharedLoader?.loadDefaultSnapshot || sharedSnapshotHelper?.fetchDefaultSnapshotDirect);
   let snapshotRequestedAt = null;
   let snapshotPromise = null;
-  const loadStartedAt = bubbleDataNow();
-  const queryDetails = {
-    page: 'bubble_chart',
-    hasUrlOverrides: urlOverridesActive,
-    snapshotEligible: defaultChartMode,
-    sharedLoaderAvailable: Boolean(sharedLoader),
-    inactiveChartMode: !bubbleActive,
-    timestamp: new Date().toISOString()
-  };
 
   try {
-    await trackAnalytics('sbase_data_queried', queryDetails);
+    await trackAnalytics('page_load', {
+      page: 'bubble_chart',
+      timestamp: new Date().toISOString()
+    });
 
     let pollutants = [];
     let categories = [];
@@ -911,116 +626,23 @@ async function loadData(options = {}) {
 
     const haveData = () => pollutants.length && categories.length && rows.length;
 
-    if (sharedLoader && typeof sharedLoader.getCachedData === 'function') {
-      try {
-        if (sharedLoader.isDataLoaded?.()) {
-          const cachedData = sharedLoader.getCachedData();
-          const cachedPollutants = Array.isArray(cachedData?.pollutants) ? cachedData.pollutants : [];
-          const cachedCategories = selectCategoriesArray(cachedData);
-          const cachedRows = Array.isArray(cachedData?.timeseries)
-            ? cachedData.timeseries
-            : (Array.isArray(cachedData?.rows) ? cachedData.rows : []);
-          const cacheComplete = cachedPollutants.length && cachedCategories.length && cachedRows.length;
-
-          if (cacheComplete) {
-            pollutants = cachedPollutants;
-            categories = cachedCategories;
-            rows = cachedRows;
-            hasFullDataset = true;
-            latestDatasetSource = 'cache';
-            bubbleDataInfoLog('Bubble chart hydrated from shared cache', {
-              pollutants: pollutants.length,
-              categories: categories.length,
-              rows: rows.length
-            });
-          } else {
-            swallowBubblePromise(recordBubbleSupabaseFailure({
-              source: 'cache',
-              label: 'shared-cache',
-              reason: 'cache-empty',
-              severity: 'warning',
-              message: 'Shared loader cache returned incomplete dataset',
-              details: {
-                pollutantCount: cachedPollutants.length,
-                categoryCount: cachedCategories.length,
-                rowCount: cachedRows.length
-              }
-            }));
-          }
-        }
-      } catch (error) {
-        bubbleDataInfoLog('Shared loader cache read failed', error?.message || error);
-        swallowBubblePromise(recordBubbleSupabaseFailure({
-          source: 'cache',
-          label: 'shared-cache',
-          reason: 'cache-read',
-          severity: 'warning',
-          error
-        }));
-      }
-    }
-
-    const canShortCircuitSnapshot = !haveData() && defaultChartMode && snapshotSourceAvailable && !sharedLoader?.isDataLoaded?.();
-    if (canShortCircuitSnapshot) {
-      if (!snapshotPromise) {
-        snapshotRequestedAt = bubbleDataNow();
-        snapshotPromise = requestDefaultSnapshot();
-      }
-
-      if (snapshotPromise) {
-        if (allowSupabaseHydration) {
-          triggerBubbleHydration(sharedLoader, 'snapshot-prefetch');
-        }
-
-        const snapshot = await snapshotPromise.catch(error => {
-          bubbleDataInfoLog('Immediate bubble snapshot load failed', {
-            message: error?.message || String(error)
-          });
-          return null;
-        });
-
-        if (snapshot?.data) {
-          const normalizedSnapshot = extractBubbleSnapshotData(snapshot);
-          const snapshotCategories = selectCategoriesArray(normalizedSnapshot);
-          pollutants = normalizedSnapshot?.pollutants || [];
-          categories = snapshotCategories;
-          rows = normalizedSnapshot?.rows || [];
-          hasFullDataset = false;
-          latestDatasetSource = 'snapshot';
-          selectorMetadata = normalizedSnapshot;
-          selectorMetadataLoaded = true;
-
-          const snapshotDuration = snapshotRequestedAt
-            ? Number((bubbleDataNow() - snapshotRequestedAt).toFixed(1))
-            : null;
-
-          bubbleDataInfoLog('Bubble chart rendering from default JSON snapshot (immediate)', {
-            durationMs: snapshotDuration,
-            generatedAt: normalizedSnapshot?.generatedAt || snapshot.generatedAt || null,
-            summary: {
-              pollutants: pollutants.length,
-              categories: categories.length,
-              rows: rows.length
-            }
-          });
-
-          await trackAnalytics('json_data_loaded', {
-            page: 'bubble_chart',
-            durationMs: snapshotDuration,
-            generatedAt: normalizedSnapshot?.generatedAt || snapshot.generatedAt || null,
-            rows: rows.length,
-            pollutants: pollutants.length,
-            categories: categories.length
-          });
-        } else {
-          snapshotPromise = null;
-        }
-      }
+    if (sharedLoader?.isDataLoaded()) {
+      const cachedData = sharedLoader.getCachedData();
+      pollutants = cachedData.pollutants;
+      categories = selectCategoriesArray(cachedData);
+      rows = cachedData.timeseries;
+      hasFullDataset = true;
+      latestDatasetSource = 'cache';
+      bubbleDataInfoLog('Bubble chart hydrated from shared cache', {
+        pollutants: pollutants.length,
+        categories: categories.length,
+        rows: rows.length
+      });
     }
 
     if (!haveData() && sharedLoader) {
       const raceCandidates = [];
-      if (allowSupabaseHydration && !sharedLoader.isDataLoaded?.()) {
+      if (!sharedLoader.isDataLoaded?.()) {
         const bootstrapPromise = triggerBubbleFullDatasetBootstrap(sharedLoader, 'initial-race');
         raceCandidates.push(
           bootstrapPromise
@@ -1039,28 +661,26 @@ async function loadData(options = {}) {
         );
       }
 
-      if (defaultChartMode && snapshotSourceAvailable) {
+      if (defaultChartMode && sharedLoader.loadDefaultSnapshot) {
         snapshotRequestedAt = bubbleDataNow();
         if (!snapshotPromise) {
-          snapshotPromise = requestDefaultSnapshot();
+          snapshotPromise = sharedLoader.loadDefaultSnapshot();
         }
-        if (snapshotPromise) {
-          raceCandidates.push(
-            snapshotPromise
-              .then(snapshot => {
-                if (snapshot?.data) {
-                  return { source: 'snapshot', snapshot, requestedAt: snapshotRequestedAt };
-                }
-                return null;
-              })
-              .catch(error => {
-                bubbleDataInfoLog('Default snapshot race candidate failed', {
-                  message: error?.message || String(error)
-                });
-                return null;
-              })
-          );
-        }
+        raceCandidates.push(
+          snapshotPromise
+            .then(snapshot => {
+              if (snapshot?.data) {
+                return { source: 'snapshot', snapshot, requestedAt: snapshotRequestedAt };
+              }
+              return null;
+            })
+            .catch(error => {
+              bubbleDataInfoLog('Default snapshot race candidate failed', {
+                message: error?.message || String(error)
+              });
+              return null;
+            })
+        );
       }
 
       if (raceCandidates.length) {
@@ -1084,10 +704,9 @@ async function loadData(options = {}) {
           });
         } else if (initialResult?.source === 'snapshot') {
           const snapshot = initialResult.snapshot;
-          const normalizedSnapshot = extractBubbleSnapshotData(snapshot);
-          pollutants = normalizedSnapshot?.pollutants || [];
-          categories = selectCategoriesArray(normalizedSnapshot);
-          rows = normalizedSnapshot?.rows || [];
+          pollutants = snapshot.data.pollutants || [];
+          categories = selectCategoriesArray(snapshot.data);
+          rows = snapshot.data.timeseries || snapshot.data.rows || snapshot.data.data || [];
           hasFullDataset = false;
           latestDatasetSource = 'snapshot';
           const snapshotDuration = initialResult.requestedAt
@@ -1102,23 +721,11 @@ async function loadData(options = {}) {
               rows: rows.length
             }
           });
-          await trackAnalytics('json_data_loaded', {
-            page: 'bubble_chart',
-            durationMs: snapshotDuration,
-            generatedAt: snapshot.generatedAt || null,
-            rows: rows.length,
-            pollutants: pollutants.length,
-            categories: categories.length
-          });
-          if (!selectorMetadataLoaded) {
-            selectorMetadata = normalizedSnapshot;
-            selectorMetadataLoaded = Boolean(selectorMetadata);
-          }
         }
       }
     }
 
-    if (!haveData() && allowSupabaseHydration) {
+    if (!haveData()) {
       const heroDataset = await loadBubbleHeroDataset(sharedLoader);
       const heroCategories = selectCategoriesArray(heroDataset);
       if (heroDataset?.pollutants?.length && heroCategories.length) {
@@ -1132,13 +739,11 @@ async function loadData(options = {}) {
           categories: categories.length,
           rows: rows.length
         });
-        if (allowSupabaseHydration) {
-          triggerBubbleHydration(sharedLoader, defaultChartMode ? 'snapshot-fallback' : 'hero');
-        }
+        triggerBubbleFullDatasetBootstrap(sharedLoader, defaultChartMode ? 'snapshot-fallback' : 'hero');
       }
     }
 
-    if (!haveData() && allowSupabaseHydration) {
+    if (!haveData()) {
       if (sharedLoader) {
         try {
           const sharedData = await sharedLoader.loadSharedData();
@@ -1154,7 +759,6 @@ async function loadData(options = {}) {
           });
         } catch (error) {
           console.error('Shared loader failed, falling back to direct load:', error);
-          const directFetchStartedAt = bubbleDataNow();
           const result = await loadDataDirectly();
           pollutants = result.pollutants;
           categories = selectCategoriesArray(result);
@@ -1166,15 +770,8 @@ async function loadData(options = {}) {
             categories: categories.length,
             rows: rows.length
           });
-          swallowBubblePromise(emitBubbleDatasetLoadedMetrics({
-            source: 'direct',
-            rowsCount: Array.isArray(result?.rows) ? result.rows.length : 0,
-            startedAt: directFetchStartedAt,
-            fullDataset: true
-          }));
         }
       } else {
-        const directFetchStartedAt = bubbleDataNow();
         const result = await loadDataDirectly();
         pollutants = result.pollutants;
         categories = selectCategoriesArray(result);
@@ -1186,17 +783,7 @@ async function loadData(options = {}) {
           categories: categories.length,
           rows: rows.length
         });
-        swallowBubblePromise(emitBubbleDatasetLoadedMetrics({
-          source: 'direct',
-          rowsCount: Array.isArray(result?.rows) ? result.rows.length : 0,
-          startedAt: directFetchStartedAt,
-          fullDataset: true
-        }));
       }
-    }
-
-    if (!haveData() && !allowSupabaseHydration) {
-      throw new Error('Bubble chart snapshot unavailable while Supabase access is disabled');
     }
 
     if (!hasFullDataset) {
@@ -1248,7 +835,7 @@ async function loadData(options = {}) {
       activityMetadata: !hasFullDataset && metadataCategories.length ? metadataCategories : null
     });
 
-    if (!hasFullDataset && allowSupabaseHydration) {
+    if (!hasFullDataset) {
       ensureAllCategoryMetadata(sharedLoader)
         .then(metadata => {
           if (!Array.isArray(metadata) || !metadata.length) {
@@ -1261,22 +848,18 @@ async function loadData(options = {}) {
         });
     }
 
-    if (!hasFullDataset && allowSupabaseHydration) {
-      triggerBubbleHydration(sharedLoader, 'post-load');
-    }
-
     return dataset;
 
   } catch (error) {
     console.error('Error loading scatter chart data:', error);
-    await recordBubbleSupabaseFailure({
-      source: latestDatasetSource || 'unknown',
-      durationMs: Number((bubbleDataNow() - loadStartedAt).toFixed(1)),
-      error,
-      inactiveChartMode: !bubbleActive,
-      reason: 'load-data'
+    
+    // Track error
+    await trackAnalytics('error', {
+      error_type: 'data_load_error',
+      error_message: error.message,
+      page: 'bubble_chart'
     });
-
+    
     throw error;
   }
 }
@@ -1677,100 +1260,61 @@ function scheduleFullDatasetLoad(sharedLoader, reason = 'manual') {
  * Fallback function for direct data loading (when shared loader fails)
  */
 async function loadDataDirectly() {
-  return withSupabaseRetries(async (attempt) => {
-    const client = ensureInitialized();
-    if (!client) {
-      throw new Error('Supabase client not available');
-    }
+  const client = ensureInitialized();
+  if (!client) {
+    throw new Error('Supabase client not available');
+  }
 
-    const batchStart = bubbleDataNow();
-    bubbleDataInfoLog('Starting direct Supabase fetch for bubble chart', { attempt });
-    const timedQuery = (label, promise) => {
-      const start = bubbleDataNow();
-      bubbleDataInfoLog('Supabase query started', { label, attempt });
-      return promise.then(response => {
-        const duration = Number((bubbleDataNow() - start).toFixed(1));
-        if (response?.error) {
-          bubbleDataInfoLog('Supabase query failed', {
-            label,
-            durationMs: duration,
-            attempt,
-            message: response.error.message || String(response.error)
-          });
-          swallowBubblePromise(recordBubbleSupabaseFailure({
-            source: 'bubble-direct-query',
-            label,
-            durationMs: duration,
-            attempt,
-            reason: 'direct-fetch',
-            error: response.error
-          }));
-        } else {
-          bubbleDataInfoLog('Supabase query completed', {
-            label,
-            durationMs: duration,
-            attempt,
-            rows: Array.isArray(response?.data) ? response.data.length : 0
-          });
-        }
-        return response;
-      }).catch(error => {
-        const duration = Number((bubbleDataNow() - start).toFixed(1));
-        bubbleDataInfoLog('Supabase query threw', {
+  const batchStart = bubbleDataNow();
+  bubbleDataInfoLog('Starting direct Supabase fetch for bubble chart');
+  const timedQuery = (label, promise) => {
+    const start = bubbleDataNow();
+    bubbleDataInfoLog('Supabase query started', { label });
+    return promise.then(response => {
+      const duration = Number((bubbleDataNow() - start).toFixed(1));
+      if (response?.error) {
+        bubbleDataInfoLog('Supabase query failed', {
           label,
           durationMs: duration,
-          attempt,
-          message: error?.message || String(error)
+          message: response.error.message || String(response.error)
         });
-        swallowBubblePromise(recordBubbleSupabaseFailure({
-          source: 'bubble-direct-query',
+      } else {
+        bubbleDataInfoLog('Supabase query completed', {
           label,
           durationMs: duration,
-          attempt,
-          reason: 'direct-fetch',
-          error
-        }));
-        throw error;
-      });
-    };
-
-    const [pollutantsResp, groupsResp, dataResp] = await Promise.all([
-      timedQuery('naei_global_t_pollutant', client.from('naei_global_t_pollutant').select('*')),
-      timedQuery('naei_global_t_category', client.from('naei_global_t_category').select('*')),
-      timedQuery('naei_2023ds_t_category_data', client.from('naei_2023ds_t_category_data').select('*'))
-    ]);
-
-    if (pollutantsResp.error) throw pollutantsResp.error;
-    if (groupsResp.error) throw groupsResp.error;
-    if (dataResp.error) throw dataResp.error;
-
-    const payload = {
-      pollutants: pollutantsResp.data || [],
-      categories: groupsResp.data || [],
-      rows: dataResp.data || []
-    };
-
-    bubbleDataInfoLog('Direct Supabase fetch completed', {
-      durationMs: Number((bubbleDataNow() - batchStart).toFixed(1)),
-      attempt,
-      summary: {
-        pollutants: payload.pollutants.length,
-        categories: payload.categories.length,
-        rows: payload.rows.length
+          rows: Array.isArray(response?.data) ? response.data.length : 0
+        });
       }
+      return response;
     });
+  };
 
-    return payload;
-  }, { label: 'direct-fetch' });
-}
+  const [pollutantsResp, groupsResp, dataResp] = await Promise.all([
+    timedQuery('naei_global_t_pollutant', client.from('naei_global_t_pollutant').select('*')),
+    timedQuery('naei_global_t_category', client.from('naei_global_t_category').select('*')),
+    timedQuery('naei_2023ds_t_category_data', client.from('naei_2023ds_t_category_data').select('*'))
+  ]);
 
-function triggerBubbleHydration(sharedLoader, reason) {
-  triggerBubbleFullDatasetBootstrap(sharedLoader, reason).catch(error => {
-    bubbleDataInfoLog('Bubble full dataset hydration failed', {
-      reason,
-      message: error?.message || String(error)
-    });
+  if (pollutantsResp.error) throw pollutantsResp.error;
+  if (groupsResp.error) throw groupsResp.error;
+  if (dataResp.error) throw dataResp.error;
+
+  const payload = {
+    pollutants: pollutantsResp.data || [],
+    categories: groupsResp.data || [],
+    rows: dataResp.data || []
+  };
+
+  bubbleDataInfoLog('Direct Supabase fetch completed', {
+    durationMs: Number((bubbleDataNow() - batchStart).toFixed(1)),
+    summary: {
+      pollutants: payload.pollutants.length,
+      categories: payload.categories.length,
+      rows: payload.rows.length
+    }
   });
+
+  return payload;
 }
 
 // Create the main export object for this module (defined after all functions)
