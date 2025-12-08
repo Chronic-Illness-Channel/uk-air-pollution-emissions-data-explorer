@@ -16,12 +16,11 @@ This workspace hosts the shared v3.0 shell plus the current bubble (v2.0) and li
 4. Exports rely on client-side XLSX/PNG generation; analytics events post to Supabase via `SharedResources/analytics.js` when enabled.
 
 ## Site-Wide Analytics (Optional)
-- The helper `SharedResources/analytics.js` now emits an automatic `page_drawn` event (once per load) plus any manual `interaction` events you send via `SiteAnalytics.trackInteraction(label, data)`. A recurring `page_seen` heartbeat fires every 30 seconds *after* the user interacts (and only while the tab stays visible) so we approximate active dwell time instead of background tab time, and dashboard “Interactions” explicitly filters those heartbeats out so you only see deliberate actions.
-- Events insert into the lightweight `site_events` table through the Supabase REST API, so no application-specific client wiring is required.
-- Country attribution continues to rely on the privacy-friendly timezone/locale guess (`GB`, `US`, etc.); no IP addresses or fingerprints are stored.
 - To provision the storage, run `../CIC-test-data-explorer-analytics/scripts/site_analytics_setup.sql` inside your Supabase project once (the SQL now lives in the private analytics repo), then keep the existing Row Level Security policies for the `anon` role (Supabase now maps this to the publishable key that replaces the legacy anon key).
-- Per-page slugs are inferred from `body[data-page-slug]`; set `window.__SITE_ANALYTICS_DISABLE_AUTO_PAGEVIEW__ = true` before loading the script if a view should remain silent.
+> For a concise summary of how the helper works (plus runtime flags like `?analytics=off`), see [`analytics_overview.md`](./system_docs/analytics_overview.md).
 - For a quick local view of the data, open `../CIC-test-data-explorer-analytics/site-analytics-dashboard.html` from the private repo (serve it via `npx serve` or similar). It now pulls from `site_event_daily_summary`, `site_event_country_summary`, `site_event_session_summary`, and the latest `site_events` rows to render overview cards (including Avg Session Length), tables, and recent activity—no deployment needed.
+
+> For a concise summary of how the helper works (plus runtime flags like `?analytics=off`), see [`ANALYTICS_OVERVIEW.md`](./ANALYTICS_OVERVIEW.md).
 
 ## Working Locally
 - Serve the repository with any static file server (`python -m http.server`, `npx serve`, etc.) so the Supabase client can resolve relative paths.
