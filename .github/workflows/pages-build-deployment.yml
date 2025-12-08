@@ -1,0 +1,63 @@
+name: pages build and deployment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Write Supabase runtime config
+        working-directory: .
+        env:
+          SUPABASE_URL: ${{ secrets.NAEI_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.NAEI_SUPABASE_PUBLISHABLE_KEY }}
+          STORAGE_KEY_BASE: ${{ secrets.NAEI_SUPABASE_STORAGE_KEY_BASE }}
+        run: |
+          set -euo pipefail
+          STORAGE_KEY="${STORAGE_KEY_BASE:-}"
+          if [ -z "$STORAGE_KEY" ]; then
+            HOST=$(node -p "new URL(process.env.SUPABASE_URL).hostname.split('.')[0]")
+            STORAGE_KEY="sb-${HOST}-auth-token"
+          fi
+          cat <<EOF > SharedResources/supabase-env.js
+          window.__NAEI_SUPABASE_CONFIG = Object.freeze({
+            url: "${SUPABASE_URL}",
+            key: "${SUPABASE_KEY}",
+            storageKeyBase: "${STORAGE_KEY}"
+          });
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
