@@ -37,13 +37,17 @@ if (!loadedEnvPath) {
 }
 
 const url = process.env.NAEI_SUPABASE_URL || process.env.SUPABASE_URL;
-const key = process.env.NAEI_SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+const key = process.env.NAEI_SUPABASE_KEY
+  || process.env.NAEI_SUPABASE_PUBLISHABLE_KEY
+  || process.env.SUPABASE_PUBLISHABLE_KEY
+  || process.env.SUPABASE_ANON_KEY
+  || process.env.SUPABASE_KEY;
 const storageKeyBase = process.env.NAEI_SUPABASE_STORAGE_KEY_BASE
   || process.env.SUPABASE_STORAGE_KEY_BASE
   || deriveStorageKeyBase(url);
 
 if (!url || !key) {
-  console.error('[generate-supabase-env] Missing SUPABASE_URL or SUPABASE_ANON_KEY in environment.');
+  console.error('[generate-supabase-env] Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY (legacy SUPABASE_ANON_KEY) in environment.');
   process.exit(1);
 }
 

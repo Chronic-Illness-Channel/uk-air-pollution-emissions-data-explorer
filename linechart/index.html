@@ -37,7 +37,7 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="UK Air Pollution/Emissions Line Chart">
   <meta property="og:description" content="Compare grouped UK emissions across years with interactive charts plus CSV/XLSX export and downloadable images.">
-  <meta property="og:url" content="https://github.com/Chronic-Illness-Channel/uk-air-pollution-emissions-data-explorer">
+  <meta property="og:url" content="https://github.com/ChronicChannel-test/CIC-test-uk-air-pollution-emissions-data-explorer">
   <meta property="og:image" content="images/CIC%20-%20NAEI%20Multi-Group%20Viewer%20Thumbnail.1120x630.png">
   <meta property="og:image:width" content="1120">
   <meta property="og:image:height" content="630">
@@ -108,7 +108,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 
-<body>
+<body data-page-slug="linechart">
   <div class="chart-shell">
     <div id="loadingOverlay">
       <div class="spinner" aria-hidden="true"></div>
@@ -179,10 +179,88 @@
     </div>
   </div>
 
+  <script>
+    (function () {
+      window.__CIC_CHART_ID__ = 'linechart';
+    })();
+  </script>
+
   <!-- Shared Resources -->
   <script src="../SharedResources/supabase-env.js"></script>
   <script src="../SharedResources/supabase-config.js"></script>
   <script src="../SharedResources/analytics.js"></script>
+  <script>
+    (function () {
+      const chartId = 'linechart';
+      const embedded = window.parent && window.parent !== window;
+      const state = {
+        seenLogged: false,
+        isVisible: !embedded,
+        meta: null
+      };
+
+      function normalizeMeta(raw) {
+        if (!raw || typeof raw !== 'object') {
+          return { pageSlug: '/linechart' };
+        }
+        const normalized = { pageSlug: '/linechart', ...raw };
+        if (!normalized.query) {
+          const currentQuery = window.location.search || '';
+          normalized.query = currentQuery || null;
+        }
+        return normalized;
+      }
+
+      function tryTrackSeen() {
+        if (state.seenLogged || !state.isVisible) {
+          return;
+        }
+        if (!state.meta || !window.SiteAnalytics?.trackInteraction) {
+          return;
+        }
+        state.seenLogged = true;
+        window.SiteAnalytics.trackInteraction('linechart_seen', state.meta);
+      }
+
+      function handleVisibilityChange(isVisible) {
+        if (!isVisible) {
+          return;
+        }
+        state.isVisible = true;
+        tryTrackSeen();
+      }
+
+      function handleMetaUpdate(meta) {
+        state.meta = normalizeMeta(meta);
+        tryTrackSeen();
+      }
+
+      if (window.__LINE_CHART_VIEW_META__) {
+        handleMetaUpdate(window.__LINE_CHART_VIEW_META__);
+      }
+
+      window.addEventListener('lineChartViewMeta', (event) => {
+        handleMetaUpdate(event?.detail);
+      });
+
+      if (!embedded) {
+        handleVisibilityChange(true);
+        return;
+      }
+
+      const container = window.frameElement?.closest?.('.chart-container');
+      if (container && container.getAttribute('aria-hidden') === 'false') {
+        handleVisibilityChange(true);
+      }
+
+      window.addEventListener('message', (event) => {
+        if (event?.data?.type === 'chartVisibility'
+          && event.data.chartId === chartId) {
+          handleVisibilityChange(Boolean(event.data.visible));
+        }
+      });
+    })();
+  </script>
   <script src="../SharedResources/shared-data-loader.js"></script>
   <script src="../SharedResources/colors.js"></script>
   <script src="../SharedResources/layout-height-manager.js"></script>

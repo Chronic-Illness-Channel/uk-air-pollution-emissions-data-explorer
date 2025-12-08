@@ -13,11 +13,14 @@ const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.NAEI_SUPABASE_URL
   || process.env.SUPABASE_URL
-  || 'https://vhplzwzzkeueyelaqftl.supabase.co';
-const SUPABASE_KEY = process.env.NAEI_SUPABASE_KEY
+  || 'https://buqarqyqlugwaabuuyfy.supabase.co';
+const SUPABASE_KEY = process.env.NAEI_SUPABASE_SECRET_KEY
+  || process.env.NAEI_SUPABASE_KEY
+  || process.env.SUPABASE_SECRET_KEY
   || process.env.SUPABASE_SERVICE_ROLE_KEY
+  || process.env.SUPABASE_PUBLISHABLE_KEY
   || process.env.SUPABASE_ANON_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocGx6d3p6a2V1ZXllbGFxZnRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0NjQwODUsImV4cCI6MjA3NjA0MDA4NX0.mBAwFmfSpqffvp1GGDHKvp-y_hukSZmF4GN-Ghnf--o';
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1cWFycXlxbHVnd2FhYnV1eWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyOTczNDEsImV4cCI6MjA3Njg3MzM0MX0._zommN8QkzS0hY__N7KfuIaalKWG-PrSPq1BWg_BBjg';
 
 const OUTPUT_PATH = path.join(__dirname, '..', 'SharedResources', 'default-chart-data.json');
 
@@ -30,7 +33,7 @@ const DEFAULT_YEAR = 2023;
 
 async function main() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    throw new Error('Supabase credentials are missing. Set NAEI_SUPABASE_URL and NAEI_SUPABASE_KEY.');
+     throw new Error('Supabase credentials are missing. Set NAEI_SUPABASE_URL and NAEI_SUPABASE_SECRET_KEY (or SUPABASE_SECRET_KEY).');
   }
 
   const client = createClient(SUPABASE_URL, SUPABASE_KEY, {

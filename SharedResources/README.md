@@ -20,13 +20,14 @@ This directory contains shared assets and modules used by multiple NAEI data vis
 Centralized Supabase database connection configuration.
 - Exports: `SupabaseConfig.initSupabaseClient()`
 - Used by all applications to connect to the NAEI database
+- **Requires** `window.__NAEI_SUPABASE_CONFIG` to be defined *before* loading the script. Load the generated `SharedResources/supabase-env.js` (see below) or set the global manually at deployment time. The script now throws immediately if the runtime config is missing so that misconfigured environments fail fast instead of silently connecting to the wrong Supabase project.
 
 #### `analytics.js`
-Privacy-friendly analytics tracking system.
-- Session tracking
-- User fingerprinting (privacy-preserving)
-- Country detection via timezone
-- Exports: `Analytics.trackAnalytics()`, `Analytics.getUserCountry()`, etc.
+Lightweight site-wide analytics helper.
+- Session tracking via sessionStorage IDs (no fingerprinting)
+- Auto `page_drawn` event + manual `interaction` events
+- Country detection via timezone/locale (best-effort)
+- Exports: `SiteAnalytics.trackInteraction()`, `SiteAnalytics.trackPageDrawn()`, legacy `Analytics.trackAnalytics()` shim
 
 #### `colors.js`
 Consistent color palette and assignment logic.
@@ -55,6 +56,7 @@ Base styling shared across all NAEI viewers:
 <link rel="stylesheet" href="../SharedResources/common-styles.css">
 
 <!-- Scripts -->
+<script src="../SharedResources/supabase-env.js"></script>
 <script src="../SharedResources/supabase-config.js"></script>
 <script src="../SharedResources/analytics.js"></script>
 <script src="../SharedResources/colors.js"></script>
@@ -63,13 +65,21 @@ Base styling shared across all NAEI viewers:
 <img src="../SharedResources/images/CIC - Square - Border - Words - Alpha 360x360.png" alt="CIC Logo">
 ```
 
+Load order matters: `supabase-env.js` (generated via `scripts/generate-supabase-env.js` or manually injected at deploy time) must run before `supabase-config.js` so the global `window.__NAEI_SUPABASE_CONFIG` is available. The repo now ships `supabase-env.template.js` instead of a live credential file—copy/rename it locally or recreate it in CI, but never commit the generated `supabase-env.js`. If you inject the values inline via your hosting platform, emit the snippet before `supabase-config.js` as well.
+
 ### In JavaScript
 ```javascript
-// Initialize Supabase
-const supabase = window.SupabaseConfig.initSupabaseClient();
+// Optional: set a friendly slug or defaults before auto page_drawn fires
+window.SiteAnalytics.configure({
+   pageSlug: '/linechart',
+   defaults: { app: 'linechart' }
+});
 
-// Track analytics
-window.Analytics.trackAnalytics(supabase, 'event_name', { data: 'value' });
+// Track a user interaction
+window.SiteAnalytics.trackInteraction('share_click', {
+   format: 'png',
+   pollutant: 'PM2.5'
+});
 
 // Get colors
 const color = window.Colors.getColorForCategory('categoryName');
@@ -104,7 +114,7 @@ The shared Supabase configuration connects to these tables:
 - `naei_global_t_pollutant` - Pollutant definitions and units
 - `naei_global_t_category` - Emission source group definitions
 - `naei_2023ds_t_category_data` - Time-series data (1970-2023)
-- `analytics_events` - Usage analytics tracking (optional)
+- `site_events` - Lightweight site-wide analytics (optional)
 
 ## Color Palette
 
@@ -130,11 +140,13 @@ Category assignments:
 ## Analytics Events
 
 Standard analytics events tracked across applications:
-- `page_load` - Application initialized
-- `chart_drawn` / `scatter_chart_drawn` / `bubble_chart_drawn` - Chart rendered
-- `share_url_copied` - Shareable URL copied
-- `share_png_copied` - Chart image copied to clipboard
-- `chart_downloaded` / `scatter_chart_downloaded` / `bubble_chart_downloaded` - PNG downloaded
+- `page_drawn` - Emitted automatically once per load when the DOM is ready
+- `bubblechart_page_seen`, `linechart_page_seen`, `category_info_page_seen`, `resources_embed_page_seen`, `user_guide_page_seen` - Page-specific heartbeat emitted every 30s while the tab stays focused and there has been recent activity (explicit interaction or passive scroll/move); pauses automatically once idle for ~1 minute to approximate dwell time
+- `bubblechart_seen` / `linechart_seen` - Fired once per load when each iframe-backed tab becomes visible inside the main experience and captures the active selection
+- `bubblechart_drawn` / `linechart_drawn` - Fired whenever a new pollutant/category/year selection renders successfully
+- `bubblechart_downloaded`, `bubblechart_data_export`, `linechart_data_export` - Capture the various export buttons; payloads include filenames, formats, and counts
+- `bubblechart_share_*` / `linechart_share_*` - Family of share dialog actions (URL copy, PNG copy, email launch) prefixed by chart slug for simpler grouping
+- `sbase_data_queried` / `sbase_data_loaded` / `sbase_data_error` - Supabase lifecycle events with duration + source metadata (sources now include `hero`, `shared-bootstrap`, `shared-loader`, `cache`, `direct`)
 
 Analytics can be disabled with URL parameter: `?analytics=off`
 
