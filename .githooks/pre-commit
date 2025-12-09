@@ -2,6 +2,36 @@
 set -euo pipefail
 echo "[pre-commit] running"
 
-git add index.html
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+ORIGIN_URL="$(git config --get remote.origin.url || true)"
+REPO_SLUG="$(ORIGIN_URL="$ORIGIN_URL" python3 - <<'PY'
+import os, re
+url = os.environ.get('ORIGIN_URL', '').strip()
+matcher = re.search(r'[:/]([^/:]+)/([^/]+?)(?:\.git)?$', url)
+print(f"{matcher.group(1)}/{matcher.group(2)}" if matcher else '')
+PY
+)"
+TARGET_SLUG="Chronic-Illness-Channel/uk-air-pollution-emissions-data-explorer"
+
+if [[ "$REPO_SLUG" == "$TARGET_SLUG" ]]; then
+	echo "[pre-commit] stripping test-only robots meta from index.html (live repo)"
+	python3 - <<'PY'
+from pathlib import Path
+
+path = Path("index.html")
+if not path.exists():
+		raise SystemExit(0)
+
+text = path.read_text()
+lines = text.splitlines()
+
+needle = 'meta name="robots" content="noindex, nofollow"'
+filtered = [line for line in lines if needle not in line]
+
+if filtered != lines:
+		path.write_text("\n".join(filtered) + ("\n" if text.endswith("\n") else ""))
+PY
+fi
+
+git add index.html
 node "$REPO_ROOT/scripts/update-footer-versions.js"
