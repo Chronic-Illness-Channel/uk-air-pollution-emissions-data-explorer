@@ -21,6 +21,10 @@ Centralized Supabase database connection configuration.
 - Exports: `SupabaseConfig.initSupabaseClient()`
 - Used by all applications to connect to the NAEI database
 - **Requires** `window.__NAEI_SUPABASE_CONFIG` to be defined *before* loading the script. Load the generated `SharedResources/supabase-env.js` (see below) or set the global manually at deployment time. The script now throws immediately if the runtime config is missing so that misconfigured environments fail fast instead of silently connecting to the wrong Supabase project.
+- Configuration keys on `window.__NAEI_SUPABASE_CONFIG`:
+   - `storageKeyBase` *(required)* – prefix used for Supabase GoTrue auth tokens.
+   - `authStorageScope` *(optional, default `"app"`)* – controls how auth storage keys are segmented. `"app"` scopes by the first path segment (sharing sessions across sub-routes), `"route"` scopes per full pathname (legacy behavior), and `"global"` reuses the raw `storageKeyBase` everywhere.
+   - `authStorageKeySuffix` *(optional)* – explicit slug that overrides the scope logic entirely; useful for co-hosted apps that still need isolated auth buckets even when sharing the same first path segment.
 
 #### `analytics.js`
 Lightweight site-wide analytics helper.

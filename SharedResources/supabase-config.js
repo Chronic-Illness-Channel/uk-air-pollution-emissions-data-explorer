@@ -10,6 +10,17 @@ const SUPABASE_KEY = getRequiredValue(runtimeEnv, ['key', 'SUPABASE_KEY'], 'Supa
 const SUPABASE_STORAGE_KEY_BASE = runtimeEnv.storageKeyBase
   || runtimeEnv.SUPABASE_STORAGE_KEY_BASE
   || deriveStorageKeyBase(SUPABASE_URL);
+// Default to app-level slug (first path segment) unless overridden
+const AUTH_STORAGE_SCOPE = normalizeAuthScope(
+  runtimeEnv.authStorageScope
+    || runtimeEnv.AUTH_STORAGE_SCOPE
+    || 'app'
+);
+const AUTH_STORAGE_KEY_SUFFIX = sanitizeOptionalSlug(
+  runtimeEnv.authStorageKeySuffix
+    || runtimeEnv.AUTH_STORAGE_KEY_SUFFIX
+    || ''
+);
 
 // Maintain one Supabase client per scoped storage key to avoid duplicate GoTrue instances
 window.__NAEI_SUPABASE_CLIENTS = window.__NAEI_SUPABASE_CLIENTS || {};
@@ -50,19 +61,67 @@ function deriveStorageKeyBase(url) {
 
 function buildScopedStorageKey() {
   try {
-    const pathname = (window.location && window.location.pathname) || '';
-    const slug = pathname
-      .split('/')
-      .filter(Boolean)
-      .join('-')
-      .replace(/[^a-z0-9-]/gi, '-')
-      .replace(/-{2,}/g, '-')
-      .toLowerCase() || 'root';
-    return `${SUPABASE_STORAGE_KEY_BASE}::${slug}`;
+    const suffix = resolveStorageSuffix();
+    if (!suffix) {
+      return SUPABASE_STORAGE_KEY_BASE;
+    }
+    return `${SUPABASE_STORAGE_KEY_BASE}::${suffix}`;
   } catch (error) {
     console.warn('Unable to build scoped Supabase storage key, falling back to base key:', error);
     return SUPABASE_STORAGE_KEY_BASE;
   }
+}
+
+function resolveStorageSuffix() {
+  if (AUTH_STORAGE_KEY_SUFFIX) {
+    return AUTH_STORAGE_KEY_SUFFIX;
+  }
+
+  if (AUTH_STORAGE_SCOPE === 'global') {
+    return '';
+  }
+
+  const pathname = (window.location && window.location.pathname) || '';
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (AUTH_STORAGE_SCOPE === 'route') {
+    return sanitizeSlug(pathname) || 'root';
+  }
+
+  return sanitizeSlug(segments[0] || 'root') || 'root';
+}
+
+function sanitizeOptionalSlug(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  return sanitizeSlug(value);
+}
+
+function sanitizeSlug(source) {
+  if (typeof source !== 'string') {
+    return '';
+  }
+  return source
+    .split('/')
+    .filter(Boolean)
+    .join('-')
+    .replace(/[^a-z0-9-]/gi, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase();
+}
+
+function normalizeAuthScope(scope) {
+  if (typeof scope !== 'string') {
+    return 'app';
+  }
+  const normalized = scope.trim().toLowerCase();
+  if (['global', 'app', 'route'].includes(normalized)) {
+    return normalized;
+  }
+  console.warn(`[SupabaseConfig] Unknown authStorageScope "${scope}". Falling back to "app".`);
+  return 'app';
 }
 
 /**
