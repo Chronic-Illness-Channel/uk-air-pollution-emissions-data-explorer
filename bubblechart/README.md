@@ -19,7 +19,6 @@ The application uses a modular JavaScript architecture with shared resources:
 ### Shared Resources (from `../SharedResources/`)
 - `supabase-config.js` - Database connection configuration
 - `analytics.js` - Lightweight site-wide analytics (page view + interaction)
-- `colors.js` - Consistent color palette management
 - `common-styles.css` - Base styling shared across NAEI viewers
 - `images/` - Logo, favicon, and social media icons
 
@@ -30,6 +29,7 @@ The application uses a modular JavaScript architecture with shared resources:
 - `chart-renderer.js` - Google Charts scatter chart rendering
 - `export.js` - PNG export and share functionality
 - `main.js` - UI coordination and event handling
+- `supabase.js` - Data fetching and caching helpers
 
 ## Data Source
 

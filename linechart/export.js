@@ -4,6 +4,10 @@
  * Extracted from v2.2 index.html for modular architecture
  */
 
+const LINE_QR_BRAND_PATH = '../SharedResources/images/CIC-qrcode-Data-Explorer-linechart-brandimage.svg';
+const LINE_QR_EXPORT_SIZE = 360;
+const LINE_CHART_FOOTER_BRAND_GAP = 40;
+
 function sanitizeFilenameSegment(value) {
   return (value ?? '')
     .toString()
@@ -20,7 +24,7 @@ function trackLineShareEvent(eventLabel, meta = {}) {
   const tracker = lineChartTracker();
   if (typeof tracker === 'function') {
     return tracker(eventLabel, meta, {
-      chartType: 'line_chart',
+      chartType: 'linechart',
       pageSlug: '/linechart'
     });
   }
@@ -780,14 +784,20 @@ async function generateChartImage() {
               height: lineHeight
             };
           };
-          const buildFooterLayout = width => {
+          const buildFooterLayout = (width, options = {}) => {
+            const reservedSideWidth = Math.max(0, options.reservedSideWidth || 0);
+            const minContentHeight = Math.max(0, options.minContentHeight || 0);
             const compactFooter = width < 768;
             const footerFontSize = compactFooter ? 42 : 52;
             const lineHeight = compactFooter ? 50 : 60;
             const footerFontFamily = '"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
             const footerFont = `${footerFontSize}px ${footerFontFamily}`;
             const footerFontBold = `600 ${footerFontSize}px ${footerFontFamily}`;
-            const maxLineWidth = width - 80;
+            const availableTextWidth = Math.max(0, width - reservedSideWidth * 2);
+            const textAreaWidth = availableTextWidth > 0
+              ? Math.min(availableTextWidth, Math.max(320, availableTextWidth - 80))
+              : Math.max(320, width - 120);
+            const maxLineWidth = textAreaWidth;
             const topPadding = lineHeight;
             measureCtx.textAlign = 'left';
             const licenseSegments = [
@@ -850,8 +860,9 @@ async function generateChartImage() {
             }));
             const contactHeight = contactLines.length * lineHeight;
             const contactSpacingHeight = contactLines.length ? 20 : 0;
-            const totalHeight = topPadding + licenseHeight + contactSpacingHeight + contactHeight;
-            const contactSegmentWidth = measuredSegments[2]?.totalWidth || measuredSegments[measuredSegments.length - 1]?.totalWidth || 0;
+            const totalTextHeight = topPadding + licenseHeight + contactSpacingHeight + contactHeight;
+            const totalHeight = Math.max(minContentHeight, totalTextHeight);
+            const contactSegmentWidth = textAreaWidth;
             return {
               lineHeight,
               footerFont,
@@ -860,8 +871,12 @@ async function generateChartImage() {
               contactLines,
               measuredSegments,
               segmentSpacing,
+              contactSpacingHeight,
               totalHeight,
-              contactSegmentWidth
+              contactSegmentWidth,
+              textAreaWidth,
+              topPadding,
+              reservedSideWidth
             };
           };
 
@@ -968,7 +983,30 @@ async function generateChartImage() {
           };
 
           const headerMetrics = buildHeaderMetrics(canvasWidth);
-          const footerLayout = buildFooterLayout(canvasWidth);
+          let brandConfig = null;
+          try {
+            const lineQrImage = await loadImageElement(LINE_QR_BRAND_PATH);
+            const naturalWidth = lineQrImage.naturalWidth || LINE_QR_EXPORT_SIZE;
+            const naturalHeight = lineQrImage.naturalHeight || LINE_QR_EXPORT_SIZE;
+            const targetWidth = LINE_QR_EXPORT_SIZE;
+            const targetHeight = Math.round((targetWidth / naturalWidth) * naturalHeight);
+            brandConfig = {
+              image: lineQrImage,
+              width: targetWidth,
+              height: targetHeight
+            };
+          } catch (err) {
+            console.warn('Linechart QR brand image failed to load', err);
+          }
+
+          const brandReserveWidth = brandConfig
+            ? brandConfig.width + LINE_CHART_FOOTER_BRAND_GAP
+            : LINE_CHART_FOOTER_BRAND_GAP;
+
+          const footerLayout = buildFooterLayout(canvasWidth, {
+            reservedSideWidth: brandReserveWidth,
+            minContentHeight: brandConfig?.height || 0
+          });
           const legendLayout = buildLegendLayout(canvasWidth);
           const legendSpacing = legendLayout.rows.length ? 30 : 0;
           const legendHeight = legendLayout.totalHeight + legendSpacing;
@@ -1060,21 +1098,42 @@ async function generateChartImage() {
               licenseLines,
               contactLines,
               measuredSegments,
-              segmentSpacing
+              segmentSpacing,
+              contactSpacingHeight,
+              topPadding,
+              totalHeight,
+              reservedSideWidth
             } = footerLayout;
-            let footerY = chartY + chartHeight + lineHeight;
+            const footerBlockTop = chartY + chartHeight;
+            const textCenterX = canvasWidth / 2;
+            const contactSectionHeight = contactLines.length
+              ? contactSpacingHeight + contactLines.length * lineHeight
+              : 0;
+            const textContentHeight = topPadding + (licenseLines.length * lineHeight) + contactSectionHeight;
+            const textBlockTop = footerBlockTop + Math.max(0, (totalHeight - textContentHeight) / 2);
+            let footerY = textBlockTop + topPadding;
 
             ctx.fillStyle = '#555';
             ctx.textAlign = 'center';
             ctx.font = footerFont;
 
-            licenseLines.forEach((line, index) => {
-              ctx.fillText(line, canvasWidth / 2, footerY + index * lineHeight);
+            if (brandConfig) {
+              const brandX = Math.max(padding, reservedSideWidth - brandConfig.width);
+              const brandY = footerBlockTop + Math.max(0, (totalHeight - brandConfig.height) / 2);
+              try {
+                ctx.drawImage(brandConfig.image, brandX, brandY, brandConfig.width, brandConfig.height);
+              } catch (err) {
+                console.warn('Failed to draw linechart QR brand image', err);
+              }
+            }
+
+            licenseLines.forEach(line => {
+              ctx.fillText(line, textCenterX, footerY);
+              footerY += lineHeight;
             });
-            footerY += licenseLines.length * lineHeight;
 
             if (contactLines.length) {
-              footerY += 20;
+              footerY += contactSpacingHeight;
               ctx.textAlign = 'left';
               contactLines.forEach(({ indices, width }, lineIndex) => {
                 let lineX = (canvasWidth - width) / 2;
@@ -1094,7 +1153,10 @@ async function generateChartImage() {
                   footerY += lineHeight;
                 }
               });
+              ctx.textAlign = 'center';
             }
+
+            footerY = textBlockTop + textContentHeight;
 
             if (bannerConfig) {
               footerY += bannerConfig.spacingTop;

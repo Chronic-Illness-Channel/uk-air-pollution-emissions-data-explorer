@@ -27,7 +27,7 @@ Heartbeat pings now use slug-specific labels (for example `bubblechart_page_seen
 | `interaction` | `bubblechart_share_email_opened` | Email helper copies the chart image + opens mail client | Includes share URL + selection metadata so high-intent shares can be grouped with exports. |
 | `interaction` | `bubblechart_data_export` | CSV/XLSX data export runs (`bubblechart/export.js`) | Includes format, pollutant, year, and category count for downstream aggregation. |
 
-_Note:_ `bubblechart/main.js` explicitly calls `trackAnalytics('page_drawn', {app: 'bubble_chart'})` after the UI reveals; this enriches the automatic `page_drawn` event but does not introduce a new tuple.
+_Note:_ `bubblechart/main.js` explicitly calls `trackAnalytics('page_drawn', {app: 'bubblechart'})` after the UI reveals; this enriches the automatic `page_drawn` event but does not introduce a new tuple.
 
 ## `/linechart`
 

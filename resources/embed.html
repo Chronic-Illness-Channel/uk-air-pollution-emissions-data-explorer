@@ -584,6 +584,9 @@
       }
 
       function logElementMetrics(element, label) {
+        if (!window.__NAEI_LAYOUT_DEBUG__) {
+          return;
+        }
         if (!element) {
           console.warn(`Resources layout: missing ${label}`);
           return;
@@ -624,8 +627,8 @@
       });
     })();
   </script>
-  <script src="../SharedResources/supabase-env.js"></script>
-  <script src="../SharedResources/supabase-config.js"></script>
-  <script src="../SharedResources/analytics.js"></script>
+  <script src="../SharedResources/supabase-env.js?v=v4-30"></script>
+  <script src="../SharedResources/supabase-config.js?v=v4-30"></script>
+  <script src="../SharedResources/analytics.js?v=v4-30"></script>
 </body>
 </html>

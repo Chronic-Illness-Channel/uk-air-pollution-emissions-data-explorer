@@ -371,15 +371,19 @@ function updateLineChartTitle(yearLabel, pollutantTitle) {
 
   chartTitleEl.innerHTML = '';
 
-  const yearElement = document.createElement('div');
-  yearElement.className = 'chart-title__year-range';
-  yearElement.textContent = yearLabel;
-  chartTitleEl.appendChild(yearElement);
+  if (pollutantTitle) {
+    const pollutantElement = document.createElement('div');
+    pollutantElement.className = 'chart-title__pollutant';
+    pollutantElement.textContent = pollutantTitle;
+    chartTitleEl.appendChild(pollutantElement);
+  }
 
-  const pollutantElement = document.createElement('div');
-  pollutantElement.className = 'chart-title__pollutant';
-  pollutantElement.textContent = pollutantTitle;
-  chartTitleEl.appendChild(pollutantElement);
+  if (yearLabel) {
+    const yearElement = document.createElement('div');
+    yearElement.className = 'chart-title__year-range';
+    yearElement.textContent = yearLabel;
+    chartTitleEl.appendChild(yearElement);
+  }
 
   const measuredHeight = chartTitleEl.getBoundingClientRect?.().height || 0;
   return { element: chartTitleEl, height: Math.round(measuredHeight) };
@@ -1627,7 +1631,7 @@ function publishLineChartViewMeta(meta) {
   if (!meta) {
     return;
   }
-  window.__LINE_CHART_VIEW_META__ = meta;
+  window.__LINECHART_VIEW_META__ = meta;
   try {
     window.dispatchEvent(new CustomEvent('lineChartViewMeta', { detail: meta }));
   } catch (error) {
@@ -1756,6 +1760,9 @@ async function updateChart(){
 
   // Get unit before creating DataTable (needed for tooltips)
   const unit = pollutantUnits[pollutant] || "";
+  const pollutantUnitMeta = window.EmissionUnits?.getUnitMeta(unit);
+  const pollutantIsActivity = window.EmissionUnits?.isActivityUnit(pollutantUnitMeta || unit);
+  const axisUnitLabel = window.EmissionUnits?.formatAxisLabel(pollutantUnitMeta || unit) || unit || '';
 
   // Create DataTable explicitly to guarantee column types
   const dataTable = new google.visualization.DataTable();
@@ -1789,7 +1796,8 @@ async function updateChart(){
           formattedValue = value.toFixed(3).replace(/\.?0+$/, ''); // 3 decimals for normal values
         }
         
-        const tooltip = categoryName + '\nYear: ' + row[0] + '\nValue: ' + formattedValue + (unit ? ' ' + unit : '');
+        const tooltipUnit = window.EmissionUnits?.formatValueLabel(pollutantUnitMeta || unit, value) || unit || '';
+        const tooltip = categoryName + '\nYear: ' + row[0] + '\nValue: ' + formattedValue + (tooltipUnit ? ' ' + tooltipUnit : '');
         newRow.push(tooltip);
       }
     }
@@ -1837,6 +1845,9 @@ async function updateChart(){
   const extraChars = Math.max(0, labelLength - 3);
   const leftMargin = Math.min(140, baseMargin + (extraChars * 6)); // dynamic left padding
 
+  const yAxisBaseLabel = pollutantIsActivity ? 'Activity Data' : `${pollutant} Emissions`;
+  const yAxisTitle = axisUnitLabel ? `${yAxisBaseLabel} (${axisUnitLabel})` : yAxisBaseLabel;
+
   const chartContainer = document.getElementById('chart_div');
   if (!chartContainer) {
     console.error('chart_div element not found when attempting to draw line chart');
@@ -1882,8 +1893,8 @@ async function updateChart(){
     legendDiv.appendChild(item);
   });
   const yearLabel = startYear === endYear ? String(startYear) : `${startYear} - ${endYear}`;
-  const pollutantTitle = unit ? `${pollutant} - ${unit}` : pollutant;
-  updateLineChartTitle(yearLabel, pollutantTitle);
+  const chartTitleText = pollutantIsActivity ? 'Activity Data' : `UK ${pollutant} Emissions`;
+  updateLineChartTitle(yearLabel, chartTitleText);
   const chartTitleEl = document.getElementById('chartTitle');
   await waitForChromeStability([legendDiv, chartTitleEl]);
   const titleHeight = chartTitleEl ? Math.round(chartTitleEl.getBoundingClientRect().height || 0) : 0;
@@ -1943,8 +1954,6 @@ async function updateChart(){
   if (Number.isFinite(effectiveWrapperHeight)) {
     availableHeight = Math.max(0, effectiveWrapperHeight - chartTopOffset - paddingBottom);
   }
-
-  const yAxisTitle = pollutantTitle;
 
   const options = {
     title: '',
