@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2025-12-02T01:13:43.041Z",
+  "generatedAt": "2025-12-02T01:09:50.343Z",
   "source": "supabase",
   "defaults": {
     "lineChart": {
@@ -330,7 +330,7 @@
       {
         "id": 1,
         "category_title": "All",
-        "has_activity_data": true
+        "has_activity_data": false
       },
       {
         "id": 55,
@@ -651,8 +651,8 @@
     "timeseries": [
       {
         "id": 5,
-        "category_id": 1,
         "pollutant_id": 5,
+        "category_id": 1,
         "f1970": 625.215820341663,
         "f1971": 566.717591715661,
         "f1972": 500.468331119182,

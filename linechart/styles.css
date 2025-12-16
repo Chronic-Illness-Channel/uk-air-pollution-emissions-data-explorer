@@ -438,7 +438,7 @@ button, .add-btn, .remove-btn, .dragHandle {
   width: 72px; 
   height: 72px; 
   border-radius: 50%; 
-  background: conic-gradient(#E6194B 0deg 120deg, #F58231 120deg 240deg, #FFE119 240deg 360deg); 
+  background: conic-gradient(#E42020 0deg 120deg, #F58231 120deg 240deg, #FFE119 240deg 360deg); 
   animation: spin 1.25s linear infinite; 
   box-shadow: 0 0 12px rgba(0,0,0,0.08);
   outline: none;

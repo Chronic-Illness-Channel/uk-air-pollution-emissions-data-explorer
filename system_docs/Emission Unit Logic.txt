@@ -1,0 +1,33 @@
+ok, we need to hard code the emission units for charts, the c-boxes, tooltip calcs. Anywhere the emissions units are used. 
+
+I've added a file for the ones we need to use. 
+There are only 6 different units. Please remove anything else. I think there will "tonnes" in the code, and that can be removed. That was from a different dataset. 
+
+Apparantly it's standard convention to not have the emission units in the chart title, and in the axis titles it should be in brackets. 
+It should also be the long plural version. 
+
+So please remove from the chart title, and put the plural emission unit in brackets. Check the file for what the plurals are.
+
+However I want to have a few differences. 
+
+Acitivty Data should always been shown as TJ. Don't add the "(net)", apart from in the tooltip values. So that's the tooltips on both charts, and the values section of the c-cards. Those should have "TJ (net)"
+The calculations section of the tooltips should only be TJ.
+
+Then I need to the chart titles to have the emission units removed. 
+Need to swap the year and the title around. But keep the font size. 
+For the Pollutants I want the title to be "UK [Pollutant] Emissions". Apart from when the linechart has Activity Data selected as the Pollutant. Then it should just say "Activity Data" with the years underneath. 
+
+
+And then we need to use the plural wherever we have values for the pollutant emissions, apart from when the value is exactly 1. So that's in the tooltips on both charts and in the value section of the c-cards.
+
+Then for the calculation section of the c-card tooltips, I want to use the  Abbreviation value of the emission unit. 
+
+And the warning statement needs to always have the full plural name as well, unless the value is exactly 1. 
+
+Please implement. 
+
+Did you use the fullname in singular when the value is 1? I should have said that. 
+
+
+
+https://chronicillnesschannel.co.uk/uk-air-pollution-emissions-data-explorer/?page=linechart&pollutant_id=5&category_ids=22,17&start_year=1990&end_year=2023
