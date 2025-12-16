@@ -7,8 +7,8 @@ ORIGIN_URL="$(git config --get remote.origin.url || true)"
 REPO_SLUG="$(ORIGIN_URL="$ORIGIN_URL" python3 - <<'PY'
 import os, re
 url = os.environ.get('ORIGIN_URL', '').strip()
-m = re.search(r'[:/]([^/:]+)/([^/]+?)(?:\.git)?$', url)
-print(f"{m.group(1)}/{m.group(2)}" if m else '')
+matcher = re.search(r'[:/]([^/:]+)/([^/]+?)(?:\.git)?$', url)
+print(f"{matcher.group(1)}/{matcher.group(2)}" if matcher else '')
 PY
 )"
 TARGET_SLUG="Chronic-Illness-Channel/uk-air-pollution-emissions-data-explorer"
@@ -34,6 +34,4 @@ PY
 fi
 
 git add index.html
-python3 "$REPO_ROOT/scripts/update-script-cache-bust.py"
-git ls-files -z '*.html' | xargs -0 git add
 node "$REPO_ROOT/scripts/update-footer-versions.js"

@@ -139,90 +139,13 @@ function detectMobileExperience() {
 const IS_MOBILE_EXPERIENCE = detectMobileExperience();
 window.__NAEI_DISABLE_BUBBLE_TUTORIAL__ = IS_MOBILE_EXPERIENCE;
 
-const HAS_OWN = Object.prototype.hasOwnProperty;
-// Comparison chrome debug noise temporarily disabled; re-enable by restoring prior block when needed.
-// const DEFAULT_COMPARISON_DEBUG = true;
-// const COMPARISON_DEBUG_PREFIX = '[comparison-debug]';
-// function isComparisonDebugEnabled() { ... }
-// function comparisonDebugLog(message, payload) { ... }
-function comparisonDebugLog() {}
-
-const DEFAULT_CATEGORY_DEBUG = false;
-const CATEGORY_DEBUG_PREFIX = '[bubble-defaults]';
-
-function isBubbleDefaultDebugEnabled() {
-  if (typeof window !== 'undefined'
-    && window
-    && HAS_OWN.call(window, '__NAEI_BUBBLE_DEFAULT_DEBUG__')) {
-    return Boolean(window.__NAEI_BUBBLE_DEFAULT_DEBUG__);
-  }
-  return DEFAULT_CATEGORY_DEBUG;
-}
-
-function bubbleDefaultDebug(message, payload) {
-  if (!isBubbleDefaultDebugEnabled()) {
-    return;
-  }
-  try {
-    if (typeof payload !== 'undefined') {
-      console.log(CATEGORY_DEBUG_PREFIX, message, payload);
-    } else {
-      console.log(CATEGORY_DEBUG_PREFIX, message);
-    }
-  } catch (error) {
-    // If logging fails we intentionally stay quiet to avoid cascading errors
-  }
-}
+// Application state
+let selectedYear = null;
+let selectedPollutantId = null;
+let chartRenderCallback = null; // Callback for when chart finishes rendering
+let selectedCategoryIds = [];
+let initialComparisonFlags = []; // Store comparison flags from URL for initial checkbox state
 let lastTrackedBubbleSelectionKey = null; // Prevent duplicate analytics events for unchanged selections
-let comparisonStatementVisible = false; // Track whether comparison cards are currently rendered
-let pendingComparisonChromeRefresh = null; // Debounce chart redraws triggered by comparison layout changes
-let pendingComparisonRedraw = null; // Collapse rapid comparison checkbox toggles into a single redraw
-let pendingComparisonChromeHeight = false; // Indicates comparison chrome visibility changed and needs height sync
-window.__bubblePendingComparisonChromeHeight = pendingComparisonChromeHeight;
-function setPendingComparisonChromeHeight(nextValue) {
-  pendingComparisonChromeHeight = Boolean(nextValue);
-  window.__bubblePendingComparisonChromeHeight = pendingComparisonChromeHeight;
-  return pendingComparisonChromeHeight;
-}
-const comparisonExportStore = {
-  visible: false,
-  cards: null,
-  warning: null,
-  metrics: null,
-  calcBlocks: null,
-  inclusionNote: null,
-  shouldReplaceEnergyCalc: false
-};
-window.__bubbleComparisonExport = comparisonExportStore;
-
-function setComparisonExportStore(payload) {
-  if (!payload) {
-    clearComparisonExportStore();
-    return;
-  }
-  comparisonExportStore.cards = payload.cards || null;
-  comparisonExportStore.warning = payload.warning || null;
-  comparisonExportStore.metrics = payload.metrics || null;
-  comparisonExportStore.calcBlocks = payload.calcBlocks || null;
-  comparisonExportStore.inclusionNote = payload.inclusionNote || null;
-  comparisonExportStore.shouldReplaceEnergyCalc = Boolean(payload.shouldReplaceEnergyCalc);
-  comparisonExportStore.visible = Boolean(payload.cards);
-}
-
-function clearComparisonExportStore() {
-  comparisonExportStore.cards = null;
-  comparisonExportStore.warning = null;
-  comparisonExportStore.metrics = null;
-  comparisonExportStore.calcBlocks = null;
-  comparisonExportStore.inclusionNote = null;
-  comparisonExportStore.shouldReplaceEnergyCalc = false;
-  comparisonExportStore.visible = false;
-}
-let comparisonMeasurementDiv = null;
-let lastMeasuredComparisonChromeHeight = 0;
-window.__bubbleComparisonChromeHeight = 0;
-let suppressWrapperObserverUntil = 0; // Timestamp (ms) until which wrapper resize observer callbacks are ignored
-const WRAPPER_OBSERVER_SUPPRESS_MS = 450;
 const MIN_CHART_WRAPPER_HEIGHT = 480;
 const MIN_CHART_CANVAS_HEIGHT = 420;
 const CHART_HEADER_BUFFER = 10; // spacing between title/legend and chart
@@ -259,59 +182,11 @@ const layoutHeightManager = window.LayoutHeightManager?.create({
   heightDebounce: 250
 });
 
-// Keep the latest comparison chrome measurement synced so other modules (renderer/layout manager)
-// can reserve the correct amount of space before DOM updates land.
-function persistComparisonChromeHeight(value) {
-  const numeric = Number(value);
-  const safeValue = Number.isFinite(numeric) && numeric > 0
-    ? Math.round(numeric)
-    : 0;
-  lastMeasuredComparisonChromeHeight = safeValue;
-  window.__bubbleComparisonChromeHeight = safeValue;
-  return safeValue;
-}
-
-function suppressWrapperHeightObserver(durationMs = WRAPPER_OBSERVER_SUPPRESS_MS) {
-  const duration = Math.max(0, Number(durationMs) || 0);
-  if (duration <= 0) {
-    suppressWrapperObserverUntil = 0;
-    return;
-  }
-  suppressWrapperObserverUntil = Date.now() + duration;
-    comparisonDebugLog('suppressWrapperHeightObserver', {
-      durationMs: duration,
-      resumeInMs: suppressWrapperObserverUntil - Date.now()
-    });
-}
-
-function shouldIgnoreWrapperObserverTick() {
-    if (!suppressWrapperObserverUntil) {
-      return false;
-    }
-    const now = Date.now();
-    if (now < suppressWrapperObserverUntil) {
-      comparisonDebugLog('wrapper observer tick ignored', {
-        remainingMs: suppressWrapperObserverUntil - now,
-        pendingComparisonChromeHeight
-      });
-      return true;
-    }
-    return false;
-}
-
 if (layoutHeightManager) {
   window.__bubbleLayoutHeightManager = layoutHeightManager;
 
   const parentChangeDelay = layoutHeightManager.settings?.parentChangeDebounce || 200;
-  layoutHeightManager.onParentViewportChange?.((payload = {}) => {
-    const { viewportHeight, footerHeight, delta } = payload;
-    comparisonDebugLog('parent viewport change event', {
-      viewportHeight,
-      footerHeight,
-      delta,
-      pendingComparisonChromeHeight,
-      comparisonStatementVisible
-    });
+  layoutHeightManager.onParentViewportChange?.(({ viewportHeight }) => {
     lastKnownViewportHeight = viewportHeight || lastKnownViewportHeight;
     updateChartWrapperHeight('parent-viewport');
     drawChart(true);
@@ -529,92 +404,6 @@ function setupParentNavigationForwarding(sourceLabel = 'bubble') {
 
 setupParentNavigationForwarding('bubble');
 
-function ensureComparisonMeasurementDiv() {
-  if (comparisonMeasurementDiv && document.body.contains(comparisonMeasurementDiv)) {
-    return comparisonMeasurementDiv;
-  }
-  const measurementDiv = document.createElement('div');
-  measurementDiv.id = 'comparisonMeasurementDiv';
-  measurementDiv.className = 'comparison-statement comparison-statement--measurement';
-  measurementDiv.style.position = 'absolute';
-  measurementDiv.style.visibility = 'hidden';
-  measurementDiv.style.pointerEvents = 'none';
-  measurementDiv.style.left = '-9999px';
-  measurementDiv.style.top = '-9999px';
-  measurementDiv.style.width = 'auto';
-  document.body.appendChild(measurementDiv);
-  comparisonMeasurementDiv = measurementDiv;
-  return comparisonMeasurementDiv;
-}
-
-function getComparisonMeasurementWidth() {
-  const container = document.getElementById('comparisonContainer')
-    || document.querySelector('.chart-wrapper');
-  if (!container) {
-    return null;
-  }
-  const rect = container.getBoundingClientRect();
-  if (!rect || !rect.width) {
-    return null;
-  }
-  return Math.round(rect.width);
-}
-
-function updateComparisonMeasurement(markup) {
-  if (!markup) {
-    persistComparisonChromeHeight(0);
-    if (comparisonMeasurementDiv) {
-      comparisonMeasurementDiv.innerHTML = '';
-    }
-    return 0;
-  }
-  const measurementDiv = ensureComparisonMeasurementDiv();
-  const widthCandidate = getComparisonMeasurementWidth();
-  if (Number.isFinite(widthCandidate) && widthCandidate > 0) {
-    measurementDiv.style.width = `${widthCandidate}px`;
-  } else {
-    measurementDiv.style.width = '';
-  }
-  measurementDiv.innerHTML = markup;
-  const measured = getElementHeight(measurementDiv);
-  if (Number.isFinite(measured) && measured >= 0) {
-    persistComparisonChromeHeight(measured);
-  }
-  comparisonDebugLog('comparison measurement update', {
-    measuredHeight: lastMeasuredComparisonChromeHeight,
-    width: widthCandidate
-  });
-  return lastMeasuredComparisonChromeHeight;
-}
-
-function clearComparisonMeasurement() {
-  persistComparisonChromeHeight(0);
-  if (comparisonMeasurementDiv) {
-    comparisonMeasurementDiv.innerHTML = '';
-  }
-}
-
-function measureChartChromeHeight() {
-  const chartTitle = document.getElementById('chartTitle');
-  const customLegend = document.getElementById('customLegend');
-  const comparisonDiv = document.getElementById('comparisonDiv');
-  const titleHeight = getElementHeight(chartTitle);
-  const legendHeight = getElementHeight(customLegend);
-  const baseChromeHeight = CHART_HEADER_BUFFER + titleHeight + legendHeight;
-  let visibleComparisonHeight = 0;
-  if (comparisonDiv && comparisonDiv.style.display !== 'none') {
-    visibleComparisonHeight = getElementHeight(comparisonDiv);
-    if (Number.isFinite(visibleComparisonHeight) && visibleComparisonHeight >= 0) {
-      persistComparisonChromeHeight(visibleComparisonHeight);
-    }
-  }
-  return {
-    base: baseChromeHeight,
-    comparison: visibleComparisonHeight,
-    total: baseChromeHeight + visibleComparisonHeight
-  };
-}
-
 function updateChartWrapperHeight(contextLabel = 'init') {
   const viewportHeight = Math.round(
     IS_EMBEDDED
@@ -640,37 +429,18 @@ function updateChartWrapperHeight(contextLabel = 'init') {
     return;
   }
 
-  const chromeMetrics = measureChartChromeHeight();
-  const baseChromeHeight = chromeMetrics?.base || 0;
-  const visibleComparisonChrome = chromeMetrics?.comparison || 0;
-  const anticipatedComparisonChrome = (!visibleComparisonChrome && pendingComparisonChromeHeight)
-    ? Math.max(0, lastMeasuredComparisonChromeHeight)
-    : visibleComparisonChrome;
-  const totalChromeForLogging = baseChromeHeight + anticipatedComparisonChrome;
-  const chromeBufferForEstimate = CHART_HEADER_BUFFER;
   const estimatedChartHeight = layoutHeightManager
     ? layoutHeightManager.estimateChartHeight({
         viewportHeight,
         footerReserve,
-        chromeBuffer: chromeBufferForEstimate
+        chromeBuffer: CHART_HEADER_BUFFER
       })
     : Math.max(
         MIN_CHART_CANVAS_HEIGHT,
-        viewportHeight - footerReserve - chromeBufferForEstimate
+        viewportHeight - footerReserve - CHART_HEADER_BUFFER
       );
 
   window.__NAEI_LAST_CHART_HEIGHT = estimatedChartHeight;
-  comparisonDebugLog('updateChartWrapperHeight', {
-    context: contextLabel,
-    viewportHeight,
-    footerReserve,
-    baseChromeHeight,
-    anticipatedComparisonChrome,
-    chromeBuffer: totalChromeForLogging,
-    chromeBufferUsedForEstimate: chromeBufferForEstimate,
-    estimatedChartHeight,
-    pendingComparisonChromeHeight
-  });
   return estimatedChartHeight;
 
   /*
@@ -762,54 +532,10 @@ function getCategoryDisplayTitle(record) {
     return '';
   }
   const title = record.category_title
-    || record.categoryTitle
-    || record.category_name
-    || record.categoryName
     || record.group_name
-    || record.groupName
     || record.title
-    || record.name
-    || record.label
     || '';
   return typeof title === 'string' ? title : '';
-}
-
-function getBubbleCategoryNamePool() {
-  const normalizeName = (name) => {
-    if (!name) {
-      return '';
-    }
-    if (typeof name === 'string') {
-      return name.trim();
-    }
-    if (typeof name === 'object') {
-      return getCategoryDisplayTitle(name);
-    }
-    return String(name).trim();
-  };
-
-  const candidates = [];
-  if (Array.isArray(window.allCategoriesList) && window.allCategoriesList.length) {
-    candidates.push(...window.allCategoriesList);
-  }
-  if (Array.isArray(window.__bubbleSelectorOptions?.categoryNames) && window.__bubbleSelectorOptions.categoryNames.length) {
-    candidates.push(...window.__bubbleSelectorOptions.categoryNames);
-  }
-  const supabaseCategories = window.supabaseModule?.allCategories || [];
-  if (supabaseCategories.length) {
-    candidates.push(...supabaseCategories.map(getCategoryDisplayTitle));
-  }
-
-  const normalized = candidates
-    .map(normalizeName)
-    .filter(Boolean);
-  const unique = [...new Set(normalized)];
-
-  if ((!window.allCategoriesList || !window.allCategoriesList.length) && unique.length) {
-    window.allCategoriesList = unique.slice();
-  }
-
-  return unique;
 }
 
 async function fetchSelectorSnapshotFallback() {
@@ -872,16 +598,7 @@ function normalizeSelectorOptions(snapshotData) {
         category_title: item?.category_title || item?.group_name || item?.title || '',
         has_activity_data: item?.has_activity_data !== false
       }))
-      .filter(item => {
-        if (item.id == null || !item.category_title || !item.has_activity_data) {
-          return false;
-        }
-        const normalizedTitle = item.category_title.trim().toLowerCase();
-        if (!normalizedTitle || normalizedTitle === 'all') {
-          return false;
-        }
-        return true;
-      }),
+      .filter(item => item.id != null && item.category_title && item.has_activity_data),
     item => item.category_title.toLowerCase()
   ).sort((a, b) => sortCategoryTitles(a.category_title, b.category_title));
 
@@ -936,11 +653,6 @@ function applySelectorOptionsToGlobals(selectorOptions) {
     window.allCategoriesList = (Array.isArray(categoryNames) && categoryNames.length)
       ? categoryNames.slice()
       : categories.map(category => category.category_title).sort(sortCategoryTitles);
-    bubbleDefaultDebug('applySelectorOptionsToGlobals', {
-      source: 'snapshot-options',
-      categoryCount: window.allCategoriesList.length,
-      sample: window.allCategoriesList.slice(0, 6)
-    });
   }
 }
 
@@ -1005,11 +717,6 @@ async function init() {
           return a.localeCompare(b);
         });
       window.allCategoriesList = categoryNames;
-      bubbleDefaultDebug('applySelectorOptionsToGlobals', {
-        source: 'supabase-fallback',
-        categoryCount: window.allCategoriesList.length,
-        sample: window.allCategoriesList.slice(0, 6)
-      });
     }
 
     // Setup UI
@@ -1075,6 +782,22 @@ function setupTutorialOverlay() {
   const openBtn = document.getElementById('tutorialBtn');
   if (!overlay || !openBtn) {
     // Tutorial overlay markup missing; skipping tutorial setup
+    return;
+  }
+  if (window.__NAEI_DISABLE_BUBBLE_TUTORIAL__) {
+    openBtn.style.display = 'none';
+    openBtn.setAttribute('aria-hidden', 'true');
+    openBtn.setAttribute('tabindex', '-1');
+    openBtn.setAttribute('disabled', 'true');
+    if (typeof overlay.remove === 'function') {
+      overlay.remove();
+    } else if (overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+    tutorialOverlayApi.open = () => {};
+    tutorialOverlayApi.hide = () => {};
+    tutorialOverlayApi.isActive = () => false;
+    pendingTutorialOpenReason = null;
     return;
   }
   openBtn.setAttribute('aria-expanded', 'false');
@@ -1777,14 +1500,6 @@ async function revealMainContent() {
         setTimeout(() => {
           updateChartWrapperHeight('post-load');
           notifyParentChartReady().finally(resolve);
-          // Fallback: force a resize/draw after layout settles to avoid blank chart until devtools resize
-          setTimeout(() => {
-            try {
-              window.dispatchEvent(new Event('resize'));
-              drawChart(true);
-            } catch (err) {
-            }
-          }, 120);
         }, 16);
       }, 16);
       });
@@ -1801,11 +1516,6 @@ async function renderInitialView() {
   return new Promise(resolve => {
     const params = parseUrlParameters();
     const pollutantSelect = document.getElementById('pollutantSelect');
-    bubbleDefaultDebug('renderInitialView invoked', {
-      paramsPollutant: params.pollutantName,
-      paramsCategories: params.categoryNames,
-      initialCategoryCount: Array.isArray(window.allCategoriesList) ? window.allCategoriesList.length : 0
-    });
     
     // Use a small timeout to allow the DOM to update with options
     setTimeout(() => {
@@ -1832,43 +1542,47 @@ async function renderInitialView() {
       if (params.categoryNames && params.categoryNames.length > 0) {
         // Store comparison flags from URL for use in refreshButtons
         initialComparisonFlags = params.comparisonFlags || [];
-        bubbleDefaultDebug('renderInitialView applying URL categories', {
-          categoryNames: params.categoryNames
-        });
         params.categoryNames.forEach(name => addCategorySelector(name, false));
       } else {
         // Clear comparison flags for default categories (will be set to checked by default)
         initialComparisonFlags = [];
-        const allCategories = window.allCategoriesList || [];
-        const ecodesignCategory = allCategories.find(name => name === 'Ecodesign Stove - Ready To Burn');
-        const gasBoilerCategory = allCategories.find(name => typeof name === 'string' && name.toLowerCase().includes('gas boiler'));
-        bubbleDefaultDebug('renderInitialView default category search', {
-          categoryCount: allCategories.length,
-          sample: allCategories.slice(0, 8),
-          ecodesignFound: Boolean(ecodesignCategory),
-          gasFound: Boolean(gasBoilerCategory)
-        });
-
+        // Add default categories if none are in the URL
+      const allCategories = window.allCategoriesList || [];
+        
+        // Find specific "Ecodesign Stove - Ready To Burn" category
+        const ecodesignCategory = allCategories.find(g => 
+          g === 'Ecodesign Stove - Ready To Burn'
+        );
+        
+        // Find "Gas Boilers"  
+        const gasBoilerCategory = allCategories.find(g => 
+          g.toLowerCase().includes('gas boiler')
+        );
+        
+        // Always try to add both default categories
         if (ecodesignCategory) {
           addCategorySelector(ecodesignCategory, false);
         }
-
+        
         if (gasBoilerCategory) {
           addCategorySelector(gasBoilerCategory, false);
         }
-
+        
+        // If we didn't find either specific category, add first 2 available categories
         if (!ecodesignCategory && !gasBoilerCategory && allCategories.length > 0) {
           addCategorySelector(allCategories[0], false);
           if (allCategories.length > 1) {
             addCategorySelector(allCategories[1], false);
           }
         } else if (!ecodesignCategory && gasBoilerCategory && allCategories.length > 0) {
+          // If we only found Gas Boilers, add first available category as well
           const firstCategory = allCategories[0];
-          if (firstCategory && firstCategory !== gasBoilerCategory) {
+          if (firstCategory !== gasBoilerCategory) {
             addCategorySelector(firstCategory, false);
           }
         } else if (ecodesignCategory && !gasBoilerCategory && allCategories.length > 1) {
-          const secondCategory = allCategories.find(name => name !== ecodesignCategory);
+          // If we only found Ecodesign, add second available category as well
+          const secondCategory = allCategories.find(g => g !== ecodesignCategory);
           if (secondCategory) {
             addCategorySelector(secondCategory, false);
           }
@@ -1897,10 +1611,6 @@ async function renderInitialView() {
       // Refresh category dropdowns and buttons after adding default categories
       refreshCategoryDropdowns();
       refreshButtons();
-      bubbleDefaultDebug('renderInitialView completed', {
-        seededCategories: getSelectedCategories(),
-        comparisonFlags: initialComparisonFlags
-      });
       
       resolve();
     }, 50);
@@ -1991,9 +1701,6 @@ function parseUrlParameters() {
       if (id) {
         const category = categories.find(g => g.id === id);
         if (category) {
-          if (category.has_activity_data === false) {
-            return;
-          }
           if (activeCategoryIdSet.size && !activeCategoryIdSet.has(category.id)) {
             return;
           }
@@ -2002,21 +1709,6 @@ function parseUrlParameters() {
         }
       }
     });
-  }
-
-  const allowedCategoryNames = Array.isArray(window.allCategoriesList)
-    ? new Set(window.allCategoriesList)
-    : null;
-  if (allowedCategoryNames && categoryNames.length) {
-    const filteredNames = categoryNames.filter(name => allowedCategoryNames.has(name));
-    if (filteredNames.length !== categoryNames.length) {
-      bubbleDefaultDebug('parseUrlParameters dropped unsupported categories', {
-        before: categoryNames,
-        after: filteredNames
-      });
-    }
-    categoryNames = filteredNames;
-    comparisonFlags = comparisonFlags.slice(0, categoryNames.length);
   }
 
   // Validate year against available years
@@ -2110,11 +1802,6 @@ function addCategorySelector(defaultValue = "", usePlaceholder = true){
   const categoryName = (defaultValue && typeof defaultValue === 'object')
     ? getCategoryDisplayTitle(defaultValue)
     : defaultValue;
-  bubbleDefaultDebug('addCategorySelector invoked', {
-    requestedValue: categoryName,
-    usePlaceholder,
-    availableCategories: Array.isArray(window.allCategoriesList) ? window.allCategoriesList.length : 0
-  });
   const container = document.getElementById('categoryContainer');
   const div = document.createElement('div');
   div.className = 'categoryRow';
@@ -2198,20 +1885,6 @@ function addCategorySelector(defaultValue = "", usePlaceholder = true){
     
     // Verify the option exists
     const optionExists = [...sel.options].some(opt => opt.value === categoryName);
-    if (!optionExists) {
-      const injectedOption = new Option(categoryName, categoryName);
-      sel.add(injectedOption);
-      sel.value = categoryName;
-      bubbleDefaultDebug('addCategorySelector missing option', {
-        requestedValue: categoryName,
-        optionCount: sel.options.length,
-        sample: [...sel.options].slice(0, 6).map(opt => opt.value)
-      });
-    } else {
-      bubbleDefaultDebug('addCategorySelector applied option', {
-        requestedValue: categoryName
-      });
-    }
   }
   sel.addEventListener('change', () => { 
     refreshCategoryDropdowns(); 
@@ -2230,12 +1903,8 @@ function addCategorySelector(defaultValue = "", usePlaceholder = true){
     refreshCategoryDropdowns();
     refreshButtons();
     // alignComparisonHeader();
-    bubbleDefaultDebug('addCategorySelector post-refresh', {
-      currentSelections: getSelectedCategories()
-    });
   }, 10);
 }
-
 
 // Refresh category dropdown options (like linechart)
 function refreshCategoryDropdowns() {
@@ -2280,15 +1949,15 @@ function refreshButtons() {
     const existingCheckbox = row.querySelector('.comparison-checkbox');
     const wasChecked = existingCheckbox ? existingCheckbox.checked : false;
     
-    // Remove all existing checkboxes/buttons/wraps to rebuild them cleanly
-    row.querySelectorAll('.category-checkbox').forEach(checkbox => checkbox.remove());
-    row.querySelectorAll('.comparison-checkbox-wrap').forEach(wrap => wrap.remove());
-    row.querySelectorAll('.remove-btn').forEach(btn => btn.remove());
+    // Remove all existing checkboxes and buttons to rebuild them cleanly
+    const existingCheckboxes = row.querySelectorAll('.category-checkbox');
+    existingCheckboxes.forEach(checkbox => checkbox.remove());
+    const existingRemoveButtons = row.querySelectorAll('.remove-btn');
+    existingRemoveButtons.forEach(btn => btn.remove());
 
     // Add remove button only if there are 2 or more categories
-    let removeBtn = null;
     if (rows.length >= 2) {
-      removeBtn = document.createElement('button');
+      const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'remove-btn';
       removeBtn.innerHTML = '<span class="remove-icon" aria-hidden="true"></span> Remove Category';
@@ -2304,42 +1973,35 @@ function refreshButtons() {
       };
       row.appendChild(removeBtn);
     }
-
-    // Comparison statement checkboxes are now active (max 2)
-    if (rows.length >= 2) {
-      const comparisonWrap = document.createElement('label');
-      comparisonWrap.className = 'comparison-checkbox-wrap';
-      comparisonWrap.title = 'Toggle to include this category in the comparison statement';
-
-      const comparisonCheckbox = document.createElement('input');
-      comparisonCheckbox.type = 'checkbox';
-      comparisonCheckbox.className = 'category-checkbox comparison-checkbox';
-
-      // Determine checked state
-      const rowIndex = Array.from(rows).indexOf(row);
-
-      // Priority: 1) Preserve existing state, 2) Use URL flags on initial load, 3) Default to first two rows
-      if (existingCheckbox) {
-        comparisonCheckbox.checked = wasChecked;
-      } else if (initialComparisonFlags.length > 0 && rowIndex < initialComparisonFlags.length) {
-        comparisonCheckbox.checked = initialComparisonFlags[rowIndex];
-      } else {
-        comparisonCheckbox.checked = false;
-      }
-
-      comparisonCheckbox.addEventListener('change', (event) => refreshCheckboxes(event.target, {
-        scheduleRedraw: true,
-        reason: 'comparison-checkbox'
-      }));
-
-      const checkboxLabel = document.createElement('span');
-      checkboxLabel.className = 'comparison-checkbox-label';
-      checkboxLabel.textContent = 'Compare';
-
-      comparisonWrap.appendChild(comparisonCheckbox);
-      comparisonWrap.appendChild(checkboxLabel);
-      row.appendChild(comparisonWrap);
-    }
+    
+    // Comparison statement checkboxes disabled per requirements
+    // if (rows.length >= 2) {
+    //   const comparisonCheckbox = document.createElement('input');
+    //   comparisonCheckbox.type = 'checkbox';
+    //   comparisonCheckbox.className = 'category-checkbox comparison-checkbox';
+    //   
+    //   // Determine checked state
+    //   const rowIndex = Array.from(rows).indexOf(row);
+    //   
+    //   // Priority: 1) Preserve existing state, 2) Use URL flags on initial load, 3) Default to unchecked
+    //   if (existingCheckbox) {
+    //     // Preserve the current state for existing rows
+    //     comparisonCheckbox.checked = wasChecked;
+    //   } else if (initialComparisonFlags.length > 0 && rowIndex < initialComparisonFlags.length) {
+    //     // Use comparison flag from URL (on initial load only)
+    //     comparisonCheckbox.checked = initialComparisonFlags[rowIndex];
+    //   } else {
+    //     // Default to unchecked for new categories
+    //     comparisonCheckbox.checked = false;
+    //   }
+    //   
+    //   comparisonCheckbox.style.width = '18px';
+    //   comparisonCheckbox.style.height = '18px';
+    //   comparisonCheckbox.style.marginLeft = '50px';
+    //   comparisonCheckbox.title = 'Include in comparison statement';
+    //   comparisonCheckbox.addEventListener('change', refreshCheckboxes);
+    //   row.appendChild(comparisonCheckbox);
+    // }
   });
   
   // Clear initialComparisonFlags after first use
@@ -2375,551 +2037,38 @@ function refreshButtons() {
 }
 
 // Ensure checkboxes are only checked for two categories at once
-function refreshCheckboxes(triggeredCheckbox = null, options = {}) {
-  const { scheduleRedraw = false, reason = 'comparison-toggle' } = options || {};
-  const checkboxes = Array.from(document.querySelectorAll('.comparison-checkbox'));
-  const checkboxOrder = new Map();
-  checkboxes.forEach((checkbox, index) => checkboxOrder.set(checkbox, index));
+function refreshCheckboxes() {
+  const checkboxes = document.querySelectorAll('.comparison-checkbox');
+  const checkedBoxes = Array.from(checkboxes).filter(checkbox => checkbox.checked);
 
-  const getCheckedBoxes = () => checkboxes.filter(checkbox => checkbox.checked);
-  let checkedBoxes = getCheckedBoxes();
-
-  while (checkedBoxes.length > 2) {
-    let candidates = checkedBoxes;
-    if (triggeredCheckbox && triggeredCheckbox.checked) {
-      const others = checkedBoxes.filter(checkbox => checkbox !== triggeredCheckbox);
-      if (others.length) {
-        candidates = others;
+  // Limit to max 2 checked boxes
+  if (checkedBoxes.length > 2) {
+    // Uncheck boxes beyond the first 2
+    checkedBoxes.forEach((checkbox, index) => {
+      if (index >= 2) {
+        checkbox.checked = false;
       }
-    }
-
-    candidates.sort((a, b) => checkboxOrder.get(a) - checkboxOrder.get(b));
-    const toUncheck = candidates[0];
-    if (!toUncheck) {
-      break;
-    }
-    toUncheck.checked = false;
-    checkedBoxes = getCheckedBoxes();
+    });
   }
-
-  // Always keep remaining checkboxes enabled so users can change selections freely
+  
+  // Recalculate after limiting
+  const finalCheckedBoxes = Array.from(checkboxes).filter(checkbox => checkbox.checked);
+  
+  // Disable unchecked boxes if already at limit (2 checked)
   checkboxes.forEach(checkbox => {
-    checkbox.disabled = false;
-    checkbox.style.opacity = '1';
-    checkbox.style.cursor = 'pointer';
+    if (!checkbox.checked && finalCheckedBoxes.length >= 2) {
+      checkbox.disabled = true;
+      checkbox.style.opacity = '0.5';
+      checkbox.style.cursor = 'not-allowed';
+    } else {
+      checkbox.disabled = false;
+      checkbox.style.opacity = '1';
+      checkbox.style.cursor = 'pointer';
+    }
   });
   
-  if (scheduleRedraw) {
-    const checkedMeta = checkedBoxes.map(checkbox => {
-      const row = checkbox.closest('.categoryRow');
-      const select = row?.querySelector('select');
-      return {
-        index: checkboxOrder.get(checkbox),
-        category: select?.value || null
-      };
-    });
-    comparisonDebugLog('comparison checkbox change', {
-      reason,
-      checkedMeta,
-      totalRows: checkboxes.length
-    });
-    scheduleComparisonRedraw(reason);
-    try {
-      updateURL();
-    } catch (error) {
-      console.warn('Comparison toggle URL update failed:', error);
-    }
-  }
-}
-
-// Return the category names (display titles) that are currently selected for comparison
-function getComparisonSelections() {
-  const rows = document.querySelectorAll('#categoryContainer .categoryRow');
-  return Array.from(rows)
-    .map(row => {
-      const checkbox = row.querySelector('.comparison-checkbox');
-      const select = row.querySelector('select');
-      if (checkbox && checkbox.checked && select && select.value) {
-        return select.value;
-      }
-      return null;
-    })
-    .filter(Boolean);
-}
-
-async function syncComparisonStatement({
-  selectedCategoryIds = null,
-  allCategories = null,
-  comparisonSelections = null,
-  dataPoints = null
-} = {}) {
-  if (!selectedYear || !selectedPollutantId) {
-    hideComparisonStatement();
-    return;
-  }
-
-  const categoryList = Array.isArray(allCategories) && allCategories.length
-    ? allCategories
-    : (window.supabaseModule.allCategories || []);
-
-  const resolvedCategoryIds = Array.isArray(selectedCategoryIds) && selectedCategoryIds.length
-    ? selectedCategoryIds
-    : (getSelectedCategories()
-        .map(name => {
-          const category = categoryList.find(g => getCategoryDisplayTitle(g) === name);
-          return category ? category.id : null;
-        })
-        .filter(id => id !== null));
-
-  if (!resolvedCategoryIds.length) {
-    hideComparisonStatement();
-    return;
-  }
-
-  const resolvedSelections = Array.isArray(comparisonSelections)
-    ? comparisonSelections
-    : getComparisonSelections();
-
-  if (resolvedSelections.length < 2) {
-    hideComparisonStatement();
-    return;
-  }
-
-  const scatterData = Array.isArray(dataPoints)
-    ? dataPoints
-    : (window.supabaseModule.getScatterData(selectedYear, selectedPollutantId, resolvedCategoryIds) || []);
-
-  const usedSelections = resolvedSelections.slice(0, 2);
-  const comparisonData = [];
-
-  usedSelections.forEach(name => {
-    const categoryMatch = categoryList.find(g => getCategoryDisplayTitle(g) === name);
-    if (!categoryMatch) {
-      return;
-    }
-
-    const dataPoint = scatterData.find(dp => String(dp.categoryId) === String(categoryMatch.id));
-    if (dataPoint) {
-      const displayName = getCategoryDisplayTitle(categoryMatch);
-      const color = window.Colors?.getColorForCategory
-        ? window.Colors.getColorForCategory(displayName)
-        : null;
-      comparisonData.push({
-        ...dataPoint,
-        displayName,
-        color
-      });
-    }
-  });
-
-  if (comparisonData.length < 2) {
-    hideComparisonStatement();
-    return;
-  }
-
-  const pollutantName = window.supabaseModule.getPollutantName(selectedPollutantId);
-  const pollutantUnit = window.supabaseModule.getPollutantUnit(selectedPollutantId) || 'kt';
-  const activityUnitId = window.supabaseModule.actDataPollutantId || window.supabaseModule.activityDataId;
-  const activityUnit = (activityUnitId && window.supabaseModule.getPollutantUnit(activityUnitId)) || 'TJ';
-
-  const enrichedComparisonData = comparisonData.map(dataPoint => ({
-    ...dataPoint,
-    emissionFactor: calculateEmissionFactor(dataPoint)
-  }));
-
-  const { leader: pollutionLeader, follower: pollutionFollower } = selectLeaderFollower(
-    enrichedComparisonData,
-    (dataPoint) => normalizeNumber(dataPoint?.pollutantValue)
-  );
-
-  const { leader: energyLeader, follower: energyFollower } = selectLeaderFollower(
-    enrichedComparisonData,
-    (dataPoint) => normalizeNumber(dataPoint?.actDataValue)
-  );
-
-  const { leader: efLeaderRaw, follower: efFollowerRaw } = selectLeaderFollower(
-    enrichedComparisonData,
-    (dataPoint) => Number(dataPoint?.emissionFactor)
-  );
-
-  let leftLeader = energyFollower;
-  let leftFollower = energyLeader;
-
-  if (!leftLeader || !leftFollower) {
-    leftLeader = efLeaderRaw || pollutionLeader;
-    leftFollower = efFollowerRaw || pollutionFollower;
-  }
-
-  const pollutionRatioSourceLeader = leftLeader && leftFollower ? leftLeader : pollutionLeader;
-  const pollutionRatioSourceFollower = leftLeader && leftFollower ? leftFollower : pollutionFollower;
-
-  let pollutionRatio = NaN;
-  let pollutionRelation = null;
-
-  if (pollutionRatioSourceLeader && pollutionRatioSourceFollower) {
-    const leaderPollution = normalizeNumber(pollutionRatioSourceLeader.pollutantValue);
-    const followerPollution = normalizeNumber(pollutionRatioSourceFollower.pollutantValue);
-
-    if (Number.isFinite(leaderPollution) && Number.isFinite(followerPollution)) {
-      if (leaderPollution < followerPollution) {
-        pollutionRatio = safeRatio(followerPollution, leaderPollution);
-        pollutionRelation = 'lower';
-      } else {
-        pollutionRatio = safeRatio(leaderPollution, followerPollution);
-        pollutionRelation = 'higher';
-      }
-    }
-  }
-
-  const energyRatio = (energyLeader && energyFollower)
-    ? safeRatio(energyLeader.actDataValue, energyFollower.actDataValue)
-    : NaN;
-
-  const warningPolluter = energyFollower;
-  const warningBaseline = energyLeader;
-  const warningFallback = leftFollower || pollutionFollower;
-
-  let replacementDetails = null;
-  let replacementPollution = null;
-  let replacementInclusion = null;
-
-  if (warningPolluter && warningBaseline) {
-    replacementInclusion = await buildReplacementInclusionNote(warningPolluter, warningBaseline);
-    const baselineOnlyEnergy = normalizeNumber(warningBaseline?.actDataValue);
-    const polluterEmissionFactor = Number.isFinite(warningPolluter?.emissionFactor)
-      ? warningPolluter.emissionFactor
-      : calculateEmissionFactor(warningPolluter);
-
-    if (replacementInclusion && Number.isFinite(baselineOnlyEnergy) && baselineOnlyEnergy > 0 && Number.isFinite(polluterEmissionFactor)) {
-      replacementPollution = polluterEmissionFactor * baselineOnlyEnergy;
-      replacementDetails = {
-        polluter: warningPolluter,
-        baseline: warningBaseline,
-        emissionFactor: polluterEmissionFactor,
-        totalActivity: baselineOnlyEnergy,
-        calcSource: 'baseline-only'
-      };
-    }
-
-    if (!replacementPollution) {
-      const estimate = estimateReplacementPollution(warningPolluter, warningBaseline);
-      if (estimate) {
-        replacementDetails = {
-          polluter: warningPolluter,
-          baseline: warningBaseline,
-          emissionFactor: estimate.emissionFactor,
-          totalActivity: estimate.totalActivity,
-          calcSource: 'ef'
-        };
-        replacementPollution = estimate.value;
-      } else {
-        const fallbackTotalEnergy = sumActivityValues(
-          warningPolluter?.actDataValue,
-          warningBaseline?.actDataValue
-        );
-
-        if (Number.isFinite(polluterEmissionFactor) && fallbackTotalEnergy > 0) {
-          replacementPollution = polluterEmissionFactor * fallbackTotalEnergy;
-          replacementDetails = {
-            polluter: warningPolluter,
-            baseline: warningBaseline,
-            emissionFactor: polluterEmissionFactor,
-            totalActivity: fallbackTotalEnergy,
-            calcSource: 'fallback-energy'
-          };
-        } else if (warningFallback) {
-          const ratioFallback = safeRatio(warningPolluter?.pollutantValue, warningFallback?.pollutantValue);
-          const fallbackValue = Number.isFinite(ratioFallback)
-            ? ratioFallback * warningFallback.pollutantValue
-            : null;
-          if (Number.isFinite(fallbackValue)) {
-            replacementPollution = fallbackValue;
-            replacementDetails = {
-              polluter: warningPolluter,
-              baseline: warningBaseline,
-              emissionFactor: polluterEmissionFactor || null,
-              totalActivity: fallbackTotalEnergy || null,
-              calcSource: 'ratio-fallback'
-            };
-          }
-        }
-      }
-    }
-  }
-
-  if (leftLeader && leftFollower && energyLeader && energyFollower) {
-    const statement = {
-      pollutantName,
-      pollutantUnit,
-      activityUnit,
-      pollutionLeaderName: leftLeader.displayName,
-      pollutionFollowerName: leftFollower.displayName,
-      energyLeaderName: energyLeader.displayName,
-      energyFollowerName: energyFollower.displayName,
-      pollutionRatio,
-      pollutionRelation,
-      energyRatio,
-      replacementPollution,
-      pollutionColor: leftLeader.color,
-      energyColor: energyLeader.color,
-      comparisonData: {
-        leftPrimary: leftLeader,
-        leftSecondary: leftFollower,
-        energyPrimary: energyLeader,
-        energySecondary: energyFollower
-      },
-      warningDetails: {
-        polluter: warningPolluter,
-        baseline: warningBaseline,
-        totalActivity: replacementDetails?.totalActivity || sumActivityValues(
-          warningPolluter?.actDataValue,
-          warningBaseline?.actDataValue
-        ) || null,
-        emissionFactor: replacementDetails?.emissionFactor
-          ?? (Number.isFinite(warningPolluter?.emissionFactor)
-            ? warningPolluter.emissionFactor
-            : calculateEmissionFactor(warningPolluter)),
-        calcSource: replacementDetails?.calcSource || null,
-        inclusion: replacementInclusion || null
-      }
-    };
-
-    updateComparisonStatement(statement);
-  } else {
-    hideComparisonStatement();
-  }
-}
-
-function safeRatio(numerator, denominator) {
-  const num = Number(numerator);
-  const den = Number(denominator);
-  if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) {
-    return Infinity;
-  }
-  return num / den;
-}
-
-function sumActivityValues(...values) {
-  return values.reduce((total, value) => {
-    const numericValue = normalizeNumber(value);
-    if (!Number.isFinite(numericValue) || numericValue <= 0) {
-      return total;
-    }
-    return total + numericValue;
-  }, 0);
-}
-
-function normalizeNumber(value) {
-  if (typeof value === 'number') {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/,/g, '').trim();
-    if (!cleaned) {
-      return NaN;
-    }
-    const parsed = Number(cleaned);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-    return parseFloat(cleaned);
-  }
-  if (typeof value === 'boolean') {
-    return value ? 1 : 0;
-  }
-  return NaN;
-}
-
-function escapeHtml(value) {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function formatDynamicNumber(value) {
-  if (!Number.isFinite(value)) {
-    return null;
-  }
-
-  const abs = Math.abs(value);
-  let maxFractionDigits = 3;
-  if (abs > 0 && abs < 0.001) {
-    maxFractionDigits = 9;
-  } else if (abs < 1) {
-    maxFractionDigits = 6;
-  }
-
-  return value.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: maxFractionDigits
-  });
-}
-
-function getEmissionFactorConversionFactor(pollutantUnit) {
-  const helperFactor = window.EmissionUnits?.getConversionFactor(pollutantUnit);
-  if (Number.isFinite(helperFactor)) {
-    return helperFactor;
-  }
-  const unit = typeof pollutantUnit === 'string' ? pollutantUnit.toLowerCase() : '';
-  switch (unit) {
-    case 't':
-    case 'tonnes':
-      return 1000; // t × 10^3 → g/GJ
-    case 'grams international toxic equivalent':
-      return 1000; // g × 10^3 → g/GJ (1 TJ = 1000 GJ)
-    case 'kilotonne':
-    case 'kilotonne/kt co2 equivalent':
-    case 'kt co2 equivalent':
-      return 1000000; // kt × 10^6 → g/GJ
-    case 'kg':
-      return 1; // kg/TJ = g/GJ
-    default:
-      console.warn('Unknown pollutant unit for EF conversion:', pollutantUnit);
-      return 1000000;
-  }
-}
-
-function convertEmissionFactorToGramsPerGJ(emissionFactor, pollutantUnit) {
-  if (!Number.isFinite(emissionFactor)) {
-    return null;
-  }
-  const factor = getEmissionFactorConversionFactor(pollutantUnit);
-  return emissionFactor * factor;
-}
-
-function calculateEmissionFactor(dataPoint) {
-  if (!dataPoint) {
-    return null;
-  }
-
-  const pollutionValue = normalizeNumber(dataPoint.pollutantValue);
-  const activityValue = normalizeNumber(dataPoint.actDataValue);
-
-  if (!Number.isFinite(pollutionValue) || !Number.isFinite(activityValue) || activityValue === 0) {
-    return null;
-  }
-
-  return pollutionValue / activityValue;
-}
-
-function estimateReplacementPollution(replacementSource, baselineSource) {
-  if (!replacementSource || !baselineSource) {
-    return null;
-  }
-
-  const replacementPollution = normalizeNumber(replacementSource.pollutantValue);
-  const replacementActivity = normalizeNumber(replacementSource.actDataValue);
-  const baselineActivity = normalizeNumber(baselineSource.actDataValue);
-
-  if (!Number.isFinite(replacementPollution) || !Number.isFinite(replacementActivity) || replacementActivity === 0) {
-    return null;
-  }
-
-  const emissionFactor = calculateEmissionFactor({ pollutantValue: replacementPollution, actDataValue: replacementActivity });
-  const totalActivity = sumActivityValues(replacementActivity, baselineActivity);
-
-  if (!Number.isFinite(emissionFactor) || !Number.isFinite(totalActivity) || totalActivity <= 0) {
-    return null;
-  }
-
-  const replacement = emissionFactor * totalActivity;
-  if (!Number.isFinite(replacement)) {
-    return null;
-  }
-
-  return {
-    value: replacement,
-    emissionFactor,
-    totalActivity
-  };
-}
-
-async function requestCategoryInclusionAssessment(candidateCategoryId, containerCategoryId) {
-  if (!window.supabaseModule) {
-    return null;
-  }
-  const childId = Number(candidateCategoryId);
-  const parentId = Number(containerCategoryId);
-  if (!Number.isFinite(childId) || !Number.isFinite(parentId)) {
-    return null;
-  }
-
-  const assessor = typeof window.supabaseModule.assessCategoryInclusion === 'function'
-    ? window.supabaseModule.assessCategoryInclusion
-    : null;
-
-  if (!assessor) {
-    return null;
-  }
-
-  try {
-    return await assessor(childId, parentId);
-  } catch (error) {
-    console.warn('Category inclusion assessment failed:', error);
-    return null;
-  }
-}
-
-async function buildReplacementInclusionNote(polluterDataPoint, baselineDataPoint) {
-  if (!polluterDataPoint || !baselineDataPoint) {
-    return null;
-  }
-  const assessment = await requestCategoryInclusionAssessment(
-    polluterDataPoint.categoryId,
-    baselineDataPoint.categoryId
-  );
-  if (assessment?.included) {
-    const polluterName = polluterDataPoint.displayName || polluterDataPoint.categoryName;
-    const baselineName = baselineDataPoint.displayName || baselineDataPoint.categoryName;
-    if (polluterName && baselineName) {
-      return {
-        text: `${polluterName} is already included in ${baselineName}`,
-        reason: assessment.reason || 'evaluated'
-      };
-    }
-  }
-  return null;
-}
-
-function selectLeaderFollower(dataPoints = [], metricAccessor = () => NaN) {
-  if (!Array.isArray(dataPoints) || dataPoints.length < 2) {
-    return { leader: null, follower: null };
-  }
-
-  const ranked = [...dataPoints].sort((a, b) => {
-    const aValue = Number(metricAccessor(a));
-    const bValue = Number(metricAccessor(b));
-    const aValid = Number.isFinite(aValue);
-    const bValid = Number.isFinite(bValue);
-
-    if (!aValid && !bValid) {
-      return 0;
-    }
-    if (!aValid) {
-      return 1;
-    }
-    if (!bValid) {
-      return -1;
-    }
-    return bValue - aValue;
-  });
-
-  const leader = ranked[0];
-  const follower = ranked[1];
-
-  const leaderValue = Number(metricAccessor(leader));
-  const followerValue = Number(metricAccessor(follower));
-
-  return {
-    leader: Number.isFinite(leaderValue) ? leader : null,
-    follower: Number.isFinite(followerValue) ? follower : null
-  };
+  // Update the comparison statement based on checked boxes count
+  drawChart();
 }
 
 // Update checkbox behavior when adding a new category
@@ -2953,8 +2102,7 @@ function setupCategorySelector() {
 /**
  * Update chart when selections change
  */
-function updateChart(options = {}) {
-  const { skipHeightUpdate = false } = options || {};
+function updateChart() {
   // This will be called automatically when categories change
 
   // Reset the color system to ensure consistent color assignments
@@ -2965,7 +2113,7 @@ function updateChart(options = {}) {
   const colors = selectedCategoryNames.map(categoryName => window.Colors.getColorForCategory(categoryName));
 
   // Redraw the chart to reflect the new selections
-  drawChart(skipHeightUpdate);
+  drawChart();
 }
 
 /**
@@ -3039,23 +2187,7 @@ function setupEventListeners() {
   }, 250));
 
   if (layoutHeightManager) {
-    layoutHeightManager.observeWrapper((event = {}) => {
-      const suppressed = shouldIgnoreWrapperObserverTick();
-      comparisonDebugLog('wrapper observer event', {
-        height: event.height,
-        previous: event.previous,
-        delta: event.delta,
-        suppressed,
-        pendingComparisonChromeHeight,
-        comparisonStatementVisible
-      });
-      if (suppressed) {
-        return;
-      }
-        comparisonDebugLog('wrapper observer tick triggered redraw', {
-          pendingComparisonChromeHeight,
-          comparisonStatementVisible
-        });
+    layoutHeightManager.observeWrapper(() => {
       drawChart(true);
       sendContentHeightToParent(true);
     });
@@ -3107,23 +2239,11 @@ function publishBubbleChartViewMeta(meta) {
  * @param {boolean} skipHeightUpdate - If true, don't send height update to parent (for resize events)
  */
 async function drawChart(skipHeightUpdate = false) {
-  comparisonDebugLog('drawChart start', {
-    skipHeightUpdate,
-    pendingComparisonChromeHeight,
-    comparisonStatementVisible
-  });
   if (!chartRenderingUnlocked) {
     pendingDrawRequest = { skipHeightUpdate };
     return;
   }
   window.ChartRenderer.clearMessage();
-
-  // Ensure category colors follow UI order every draw
-  if (typeof window.Colors?.resetColorSystem === 'function') {
-    window.Colors.resetColorSystem();
-    const orderedNames = getSelectedCategories();
-    orderedNames.forEach(name => window.Colors.getColorForCategory?.(name));
-  }
 
   if (!selectedYear) {
     window.ChartRenderer.showMessage('Please select a year', 'warning');
@@ -3157,33 +2277,61 @@ async function drawChart(skipHeightUpdate = false) {
     return;
   }
 
-  await syncComparisonStatement({
-    selectedCategoryIds,
-    allCategories
-  });
-
   const estimateContext = skipHeightUpdate ? 'drawChart-resume' : 'drawChart';
   const latestEstimate = updateChartWrapperHeight(estimateContext);
   if (Number.isFinite(latestEstimate)) {
     window.__BUBBLE_PRE_LEGEND_ESTIMATE = latestEstimate;
   }
-  setPendingComparisonChromeHeight(false);
-  comparisonDebugLog('drawChart height estimate complete', {
-    estimateContext,
-    latestEstimate,
-    skipHeightUpdate
-  });
 
+  // Reset colors for new chart
+  window.Colors.resetColorSystem();
+
+  // Draw chart
   try {
     await window.ChartRenderer.drawBubbleChart(selectedYear, selectedPollutantId, selectedCategoryIds);
-    comparisonDebugLog('drawChart render complete', {
-      selectedYear,
-      selectedPollutantId,
-      categoryCount: selectedCategoryIds.length
-    });
   } catch (error) {
     console.error('Bubble chart render failed:', error);
     window.ChartRenderer.showMessage('Unable to render the chart right now. Please try again.', 'error');
+  }
+
+  // Update the comparison statement based on checked comparison checkboxes
+  const checkedCheckboxes = document.querySelectorAll('.comparison-checkbox:checked');
+  const checkedCount = checkedCheckboxes.length;
+  
+  
+  if (checkedCount >= 2) {
+    const dataPoints = window.supabaseModule.getScatterData(selectedYear, selectedPollutantId, selectedCategoryIds);
+    const category1 = dataPoints[0];
+    const category2 = dataPoints[1];
+
+    const higherPolluter = category1.pollutantValue > category2.pollutantValue ? category1 : category2;
+    const lowerPolluter = category1.pollutantValue > category2.pollutantValue ? category2 : category1;
+
+    const pollutionRatio = lowerPolluter.pollutantValue !== 0 ? higherPolluter.pollutantValue / lowerPolluter.pollutantValue : Infinity;
+    const heatRatio = higherPolluter.actDataValue !== 0 ? lowerPolluter.actDataValue / higherPolluter.actDataValue : Infinity;
+
+    const pollutantName = window.supabaseModule.getPollutantName(selectedPollutantId);
+
+    // Get display names for categories
+    const higherPolluter_displayName = getCategoryDisplayName(
+      higherPolluter.categoryName || higherPolluter.groupName || `Category ${higherPolluter.categoryId}`
+    );
+    const lowerPolluter_displayName = getCategoryDisplayName(
+      lowerPolluter.categoryName || lowerPolluter.groupName || `Category ${lowerPolluter.categoryId}`
+    );
+
+    // Create enhanced comparison statement with arrows and calculated values
+    const statement = {
+      line1: `${higherPolluter_displayName} emit ${pollutionRatio.toFixed(1)} times more ${pollutantName} than ${lowerPolluter_displayName}`,
+      line2: `yet produce around ${heatRatio.toFixed(1)} times less heat nationally`,
+      pollutionRatio: pollutionRatio,
+      heatRatio: heatRatio,
+      pollutantName: pollutantName
+    };
+    updateComparisonStatement(statement);
+  } else {
+    // Hide comparison statement when less than 2 checkboxes checked
+    hideComparisonStatement();
   }
   
   // Update URL
@@ -3220,108 +2368,6 @@ async function drawChart(skipHeightUpdate = false) {
   }
 }
 
-function scheduleComparisonRedraw(reason = 'comparison-toggle') {
-  comparisonDebugLog('scheduleComparisonRedraw invoked', {
-    reason,
-    pendingComparisonChromeHeight,
-    comparisonStatementVisible,
-    hasPending: Boolean(pendingComparisonRedraw)
-  });
-  const raf = (window.requestAnimationFrame && window.requestAnimationFrame.bind(window))
-    || (callback => setTimeout(callback, 16));
-  const caf = (window.cancelAnimationFrame && window.cancelAnimationFrame.bind(window))
-    || clearTimeout;
-    const hadPending = Boolean(pendingComparisonRedraw);
-  if (pendingComparisonRedraw) {
-    caf(pendingComparisonRedraw);
-  }
-    comparisonDebugLog('queue comparison redraw', {
-      reason,
-      hadPending,
-      pendingComparisonChromeHeight,
-      comparisonStatementVisible
-    });
-  pendingComparisonRedraw = raf(() => {
-    pendingComparisonRedraw = null;
-      comparisonDebugLog('run comparison redraw', {
-        reason,
-        action: 'comparison-only',
-        pendingComparisonChromeHeight,
-        comparisonStatementVisible
-      });
-    Promise.resolve()
-      .then(() => syncComparisonStatement())
-      .catch(error => {
-        console.error('Comparison redraw failed:', error, reason);
-      });
-  });
-}
-
-function scheduleComparisonChromeRefresh(reason = 'comparison-toggle') {
-  const raf = (window.requestAnimationFrame && window.requestAnimationFrame.bind(window))
-    || (callback => setTimeout(callback, 16));
-  const caf = (window.cancelAnimationFrame && window.cancelAnimationFrame.bind(window))
-    || clearTimeout;
-    const hadPending = Boolean(pendingComparisonChromeRefresh);
-  if (pendingComparisonChromeRefresh) {
-    caf(pendingComparisonChromeRefresh);
-  }
-    comparisonDebugLog('queue comparison chrome refresh', {
-      reason,
-      hadPending,
-      pendingComparisonChromeHeight
-    });
-  pendingComparisonChromeRefresh = raf(() => {
-    pendingComparisonChromeRefresh = null;
-      comparisonDebugLog('run comparison chrome refresh', {
-        reason,
-        pendingComparisonChromeHeight
-      });
-    const latestEstimate = updateChartWrapperHeight(reason);
-    if (Number.isFinite(latestEstimate)) {
-      window.__BUBBLE_PRE_LEGEND_ESTIMATE = latestEstimate;
-    }
-    let layoutRefreshResult = null;
-    const refreshLayout = window.ChartRenderer?.refreshLayoutBounds;
-    if (typeof refreshLayout === 'function') {
-      try {
-        layoutRefreshResult = refreshLayout({ reason });
-      } catch (error) {
-        console.warn('Chart wrapper refresh failed:', error);
-      }
-    }
-      setPendingComparisonChromeHeight(false);
-      comparisonDebugLog('comparison chrome refresh complete', {
-        reason,
-        latestEstimate,
-        layoutRefreshResult
-      });
-    if (typeof sendContentHeightToParent === 'function') {
-      setTimeout(() => sendContentHeightToParent(true), 80);
-    }
-  });
-}
-
-function setComparisonStatementVisibility(nextVisible, reason) {
-  if (comparisonStatementVisible === nextVisible) {
-    return;
-  }
-  comparisonStatementVisible = nextVisible;
-  if (!nextVisible) {
-    clearComparisonExportStore();
-  } else if (window.__bubbleComparisonExport?.cards) {
-    window.__bubbleComparisonExport.visible = true;
-  }
-  setPendingComparisonChromeHeight(true);
-  suppressWrapperHeightObserver();
-    comparisonDebugLog('comparison visibility change', {
-      reason,
-      nextVisible,
-      pendingComparisonChromeHeight
-    });
-  scheduleComparisonChromeRefresh(reason);
-}
-
 function ensureComparisonDivExists() {
   let comparisonContainer = document.getElementById('comparisonContainer');
   if (!comparisonContainer) {
@@ -3355,552 +2401,79 @@ function getCategoryDisplayName(categoryName) {
     'Ecodesign Stove - Ready To Burn': 'Ecodesign stoves burning Ready to Burn wood',
     'Gas Boilers': 'gas boilers'
   };
-  if (displayNames[categoryName]) {
-    return displayNames[categoryName];
-  }
-  return typeof categoryName === 'string' ? categoryName : '';
+  return displayNames[categoryName] || categoryName.toLowerCase();
 }
 
 function updateComparisonStatement(statement) {
   const comparisonDiv = ensureComparisonDivExists();
   if (comparisonDiv) {
-    const wasVisible = comparisonStatementVisible;
-    comparisonDiv.style.display = 'block';
-
-    const {
-      pollutantName,
-      pollutantUnit,
-      activityUnit,
-      pollutionLeaderName,
-      pollutionFollowerName,
-      energyLeaderName,
-      energyFollowerName,
-      pollutionRatio,
-      pollutionRelation,
-      energyRatio,
-      replacementPollution,
-      pollutionColor,
-      energyColor,
-      comparisonData = {},
-      warningDetails = {}
-    } = statement || {};
-
-    const pollutantUnitMeta = window.EmissionUnits?.getUnitMeta(pollutantUnit);
-    const activityUnitMeta = window.EmissionUnits?.getUnitMeta(activityUnit);
-    const shouldOutlineCardText = (color) => Boolean(window.Colors?.shouldOutlineLightCard?.(color));
-    const pollutionCardColor = pollutionColor || '#f5a000';
-    const energyCardColor = energyColor || '#0a77c4';
-    const pollutionCardClasses = `comparison-card${shouldOutlineCardText(pollutionCardColor) ? ' comparison-card--outline' : ''}`;
-    const energyCardClasses = `comparison-card${shouldOutlineCardText(energyCardColor) ? ' comparison-card--outline' : ''}`;
-
-    if (!pollutantName || !pollutionLeaderName || !pollutionFollowerName || !energyLeaderName || !energyFollowerName) {
-      hideComparisonStatement();
-      return;
-    }
-
-    const ratioIndicatesLower = pollutionRelation === 'lower'
-      || (!pollutionRelation && Number.isFinite(pollutionRatio) && pollutionRatio < 1);
-
-    const formatRatio = (value) => {
-      if (!Number.isFinite(value)) return '∞';
-      if (value >= 100) return value.toFixed(0);
-      if (value >= 10) return value.toFixed(1);
-      return value.toFixed(2);
-    };
-
-    const formatValueWithUnit = (value) => {
-      if (!Number.isFinite(value)) {
-        return { display: '—', valueText: '—', unitText: '' };
+    comparisonDiv.style.display = 'block'; // Make sure it's visible
+    if (typeof statement === 'object' && statement.line1 && statement.line2) {
+      // Responsive design using JavaScript-calculated sizes based on window width
+      const windowWidth = window.innerWidth;
+      
+      // Responsive scaling - optimized breakpoints
+      let baseScale;
+      if (windowWidth <= 480) {
+        baseScale = 0.5; // Mobile phones
+      } else if (windowWidth <= 768) {
+        baseScale = 0.65; // Tablets
+      } else if (windowWidth <= 1024) {
+        baseScale = 0.8; // Small laptops
+      } else if (windowWidth <= 1440) {
+        baseScale = 0.9; // Standard desktops
+      } else {
+        baseScale = 1.0; // Large screens
       }
-      const formattedValue = value.toLocaleString(undefined, {
-        maximumFractionDigits: 1,
-        minimumFractionDigits: 0
-      });
-      const unitLabel = window.EmissionUnits?.formatValueLabel(pollutantUnitMeta || pollutantUnit, value) || '';
-      const display = unitLabel ? `${formattedValue} ${unitLabel}` : formattedValue;
-      return {
-        display,
-        valueText: formattedValue,
-        unitText: unitLabel
-      };
-    };
-
-    const formatDetailedPollution = (value, { context = 'value' } = {}) => {
-      const formatted = formatDynamicNumber(value);
-      if (formatted === null) return '—';
-      const unitLabel = window.EmissionUnits?.formatValueLabel(
-        pollutantUnitMeta || pollutantUnit,
-        value,
-        { context }
-      ) || pollutantUnit || '';
-      return unitLabel ? `${formatted} ${unitLabel}` : formatted;
-    };
-
-    const formatDetailedEnergy = (value, { useCalcUnit = false } = {}) => {
-      const formatted = formatDynamicNumber(value);
-      if (formatted === null) return '—';
-      const unitLabel = window.EmissionUnits?.formatValueLabel(
-        activityUnitMeta || activityUnit,
-        value,
-        { context: useCalcUnit ? 'calc' : 'value' }
-      ) || activityUnit || 'TJ';
-      return unitLabel ? `${formatted} ${unitLabel}` : formatted;
-    };
-
-    const formatEmissionFactorDetailed = (value) => {
-      const converted = convertEmissionFactorToGramsPerGJ(value, pollutantUnit);
-      if (!Number.isFinite(converted)) return '—';
-      const formatted = formatDynamicNumber(converted);
-      return formatted ? `${formatted} g/GJ` : '—';
-    };
-
-    const formatPercentChange = (value) => {
-      if (!Number.isFinite(value)) {
-        return null;
-      }
-      const absValue = Math.abs(value);
-      let fractionDigits = 2;
-      if (absValue >= 100) {
-        fractionDigits = 0;
-      } else if (absValue >= 10) {
-        fractionDigits = 1;
-      }
-      return `${absValue.toLocaleString(undefined, {
-        minimumFractionDigits: fractionDigits,
-        maximumFractionDigits: fractionDigits
-      })}%`;
-    };
-
-    const getCategoryMetrics = (dataPoint) => {
-      if (!dataPoint) {
-        return null;
-      }
-      const emissionFactor = Number.isFinite(dataPoint.emissionFactor)
-        ? dataPoint.emissionFactor
-        : calculateEmissionFactor(dataPoint);
-      return {
-        name: dataPoint.displayName || dataPoint.categoryName || '',
-        pollution: normalizeNumber(dataPoint.pollutantValue),
-        energy: normalizeNumber(dataPoint.actDataValue),
-        emissionFactor
-      };
-    };
-
-    const buildCategoryTooltipEntry = (metrics) => {
-      if (!metrics) {
-        return '';
-      }
-      return `
-        <div class="comparison-tooltip__entry">
-          <div class="comparison-tooltip__name">${escapeHtml(metrics.name)}</div>
-          <dl>
-            <div>
-              <dt>Pollution</dt>
-              <dd>${formatDetailedPollution(metrics.pollution)}</dd>
+      
+      const triangleWidth = Math.floor(180 * baseScale);
+      const triangleHeight = Math.floor(140 * baseScale);
+      const triangleBorder = Math.floor(90 * baseScale);
+      const triangleBorderHeight = Math.floor(140 * baseScale);
+      const triangleTextSize = Math.max(Math.floor(18 * baseScale), 12); // Minimum 12px
+      const centerTextSize = Math.max(Math.floor(26 * baseScale), 16); // Minimum 16px
+      const containerPadding = Math.floor(25 * baseScale);
+      const containerHeight = Math.floor(140 * baseScale);
+      const centerPadding = Math.floor(30 * baseScale);
+      
+      comparisonDiv.innerHTML = `
+        <div style="background: #FEAE00 !important; background-image: none !important; padding: ${containerPadding}px; margin: 0 auto; border-radius: 25px; display: flex; justify-content: space-between; align-items: center; min-height: ${containerHeight}px; box-sizing: border-box; width: calc(100% - 140px); position: relative; border: none; box-shadow: none;">
+          
+          <!-- Left Triangle (UP) -->
+          <div style="position: relative; width: ${triangleWidth}px; height: ${triangleHeight}px; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 0; height: 0; border-left: ${triangleBorder}px solid transparent; border-right: ${triangleBorder}px solid transparent; border-bottom: ${triangleBorderHeight}px solid #dc2626; position: relative;">
             </div>
-            <div>
-              <dt>Energy</dt>
-              <dd>${formatDetailedEnergy(metrics.energy)}</dd>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -25%); color: white; font-weight: bold; font-size: ${triangleTextSize}px; text-align: center; line-height: 1.2;">
+              ${statement.pollutionRatio.toFixed(1)} x<br>${statement.pollutantName}
             </div>
-            <div>
-              <dt>Emission factor</dt>
-              <dd>${formatEmissionFactorDetailed(metrics.emissionFactor)}</dd>
+          </div>
+
+          <!-- Center Text -->
+          <div style="flex: 1; text-align: center; color: white; font-weight: bold; font-size: ${centerTextSize}px; line-height: 1.4; padding: 0 ${centerPadding}px;">
+            ${statement.line1}<br><br>${statement.line2}
+          </div>
+
+          <!-- Right Triangle (DOWN) -->
+          <div style="position: relative; width: ${triangleWidth}px; height: ${triangleHeight}px; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 0; height: 0; border-left: ${triangleBorder}px solid transparent; border-right: ${triangleBorder}px solid transparent; border-top: ${triangleBorderHeight}px solid #dc2626; position: relative;">
             </div>
-          </dl>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -75%); color: white; font-weight: bold; font-size: ${triangleTextSize}px; text-align: center; line-height: 1.2;">
+              ${statement.heatRatio.toFixed(1)}x<br>less<br>heat
+            </div>
+          </div>
+
         </div>
       `;
-    };
-
-    const buildCalcRow = (label, detailLines) => {
-      if (!Array.isArray(detailLines) || !detailLines.length) {
-        return '';
-      }
-      const detailHtml = detailLines
-        .map((line, index) => `<span class="comparison-tooltip__calc-detail-line${index === 0 ? ' comparison-tooltip__calc-detail-line--primary' : ''}">${escapeHtml(line)}</span>`)
-        .join('');
-      return `
-        <div class="comparison-tooltip__calc-row">
-          <span>${escapeHtml(label)}</span>
-          <span class="comparison-tooltip__calc-detail">${detailHtml}</span>
+    } else {
+      // Simple format for fallback
+      comparisonDiv.innerHTML = `
+        <div style="background: #f97316; padding: 15px; margin: 15px auto; border-radius: 8px; text-align: center; color: white; font-weight: bold; max-width: 1000px;">
+          ${statement}
         </div>
       `;
-    };
-
-    const buildCalcNote = (message) => {
-      if (!message) {
-        return '';
-      }
-      return `<div class="comparison-tooltip__note"><strong>Note: ${escapeHtml(message)}</strong></div>`;
-    };
-
-    const leftPrimaryMetrics = getCategoryMetrics(comparisonData.leftPrimary);
-    const leftSecondaryMetrics = getCategoryMetrics(comparisonData.leftSecondary);
-    const energyPrimaryMetrics = getCategoryMetrics(comparisonData.energyPrimary);
-    const energySecondaryMetrics = getCategoryMetrics(comparisonData.energySecondary);
-
-    const pollutionNumeratorValue = pollutionRelation === 'lower'
-      ? leftSecondaryMetrics?.pollution
-      : leftPrimaryMetrics?.pollution;
-    const pollutionDenominatorValue = pollutionRelation === 'lower'
-      ? leftPrimaryMetrics?.pollution
-      : leftSecondaryMetrics?.pollution;
-
-    const pollutionFormulaLines = [];
-    if (Number.isFinite(pollutionRatio)
-      && Number.isFinite(pollutionNumeratorValue)
-      && Number.isFinite(pollutionDenominatorValue)) {
-      const numeratorLabel = formatDetailedPollution(pollutionNumeratorValue, { context: 'calc' });
-      const denominatorLabel = formatDetailedPollution(pollutionDenominatorValue, { context: 'calc' });
-      pollutionFormulaLines.push(`${numeratorLabel} ÷ ${denominatorLabel} = ${formatRatio(pollutionRatio)}x`);
-      const pollutionDirection = ratioIndicatesLower ? '(lower pollution)' : '(higher pollution)';
-      pollutionFormulaLines.push(pollutionDirection);
     }
-
-    const energyFormulaLines = [];
-    if (Number.isFinite(energyRatio)
-      && Number.isFinite(energyPrimaryMetrics?.energy)
-      && Number.isFinite(energySecondaryMetrics?.energy)) {
-      energyFormulaLines.push(`${formatDetailedEnergy(energyPrimaryMetrics.energy, { useCalcUnit: true })} ÷ ${formatDetailedEnergy(energySecondaryMetrics.energy, { useCalcUnit: true })} = ${formatRatio(energyRatio)}x`);
-      const energyDirection = Number.isFinite(energyRatio) && energyRatio < 1 ? '(lower energy)' : '(higher energy)';
-      energyFormulaLines.push(energyDirection);
-    }
-
-    const buildComparisonTooltip = () => {
-      if (!leftPrimaryMetrics || !leftSecondaryMetrics) {
-        return '';
-      }
-      const calcMarkup = [
-        buildCalcRow('Pollution ratio', pollutionFormulaLines),
-        buildCalcRow('Energy ratio', energyFormulaLines)
-      ].filter(Boolean).join('');
-      return `
-        <div class="comparison-tooltip" role="tooltip" aria-hidden="true">
-          <div class="comparison-tooltip__heading">Detailed values</div>
-          <div class="comparison-tooltip__grid">
-            ${buildCategoryTooltipEntry(leftPrimaryMetrics)}
-            ${buildCategoryTooltipEntry(leftSecondaryMetrics)}
-          </div>
-          ${calcMarkup ? `<div class="comparison-tooltip__calc">${calcMarkup}</div>` : ''}
-        </div>
-      `;
-    };
-
-    const warningPolluterMetrics = getCategoryMetrics(warningDetails.polluter);
-    const warningBaselineMetrics = getCategoryMetrics(warningDetails.baseline);
-    const warningTotalEnergy = normalizeNumber(warningDetails.totalActivity);
-    const warningEmissionFactor = Number.isFinite(warningDetails.emissionFactor)
-      ? warningDetails.emissionFactor
-      : warningPolluterMetrics?.emissionFactor;
-    const usesBaselineOnlyCalc = warningDetails?.calcSource === 'baseline-only';
-
-    const energyDetailLines = (() => {
-      if (!Number.isFinite(warningTotalEnergy)) {
-        return ['Calculation unavailable for this selection'];
-      }
-      const formattedTotalEnergy = formatDetailedEnergy(warningTotalEnergy, { useCalcUnit: true }) || '—';
-      if (usesBaselineOnlyCalc && Number.isFinite(warningBaselineMetrics?.energy)) {
-        const baselineOnly = formatDetailedEnergy(warningBaselineMetrics.energy, { useCalcUnit: true }) || '—';
-        return [`${baselineOnly} (baseline energy)`];
-      }
-      const formatEnergyOperand = (metrics) => {
-        if (!metrics || !Number.isFinite(metrics.energy)) {
-          return null;
-        }
-        return formatDetailedEnergy(metrics.energy, { useCalcUnit: true }) || '—';
-      };
-      const polluterOperand = formatEnergyOperand(warningPolluterMetrics);
-      const baselineOperand = formatEnergyOperand(warningBaselineMetrics);
-      if (polluterOperand && baselineOperand) {
-        return [`${polluterOperand} + ${baselineOperand} = ${formattedTotalEnergy}`];
-      }
-      return [formattedTotalEnergy];
-    })();
-
-    const warningFormulaSummary = (Number.isFinite(warningTotalEnergy)
-      && Number.isFinite(warningEmissionFactor)
-      && Number.isFinite(replacementPollution))
-      ? `${formatDetailedEnergy(warningTotalEnergy, { useCalcUnit: true })} x ${formatEmissionFactorDetailed(warningEmissionFactor)} = ${formatDetailedPollution(replacementPollution, { context: 'calc' })}`
-      : null;
-
-    const inclusionNoteText = typeof warningDetails?.inclusion?.text === 'string'
-      ? warningDetails.inclusion.text
-      : null;
-    const pollutionEstimateLines = warningFormulaSummary
-      ? [warningFormulaSummary]
-      : ['Calculation unavailable for this selection'];
-
-    const buildWarningTooltip = () => {
-      if (!warningPolluterMetrics || !warningBaselineMetrics) {
-        return '';
-      }
-      const warningCalcMarkup = [
-          inclusionNoteText ? buildCalcNote(inclusionNoteText) : buildCalcRow('Energy', energyDetailLines),
-          buildCalcRow('Pollution estimate', pollutionEstimateLines)
-        ].filter(Boolean).join('');
-
-      return `
-        <div class="comparison-tooltip comparison-tooltip--warning" role="tooltip" aria-hidden="true">
-          <div class="comparison-tooltip__heading">Replacement calculation</div>
-          <div class="comparison-tooltip__grid">
-            ${buildCategoryTooltipEntry(warningPolluterMetrics)}
-            ${buildCategoryTooltipEntry(warningBaselineMetrics)}
-          </div>
-          ${warningCalcMarkup ? `<div class="comparison-tooltip__calc">${warningCalcMarkup}</div>` : ''}
-        </div>
-      `;
-    };
-
-    const sharedTooltipMarkup = buildComparisonTooltip();
-    const warningTooltipMarkup = buildWarningTooltip();
-
-    const warningValueParts = formatValueWithUnit(replacementPollution);
-    const warningValueHtml = warningValueParts.display === '—'
-      ? '—'
-      : `<span class="comparison-warning-value">${escapeHtml(warningValueParts.valueText)}${warningValueParts.unitText ? ` <span class="comparison-warning-unit">${escapeHtml(warningValueParts.unitText)}</span>` : ''}</span>`;
-
-    const baselinePollutionSource = warningDetails?.baseline || comparisonData?.leftSecondary || null;
-    const followerPollutionValue = normalizeNumber(baselinePollutionSource?.pollutantValue);
-    const polluterPollutionValue = normalizeNumber(warningDetails?.polluter?.pollutantValue);
-    const polluterIncludedInBaseline = Boolean(warningDetails?.inclusion);
-    const percentBaselinePollution = (() => {
-      // If the polluter is separate from the baseline category, use the combined
-      // historical pollution so the replacement delta reflects the whole system.
-      if (!Number.isFinite(followerPollutionValue)) {
-        return Number.isFinite(polluterPollutionValue) ? polluterPollutionValue : null;
-      }
-      if (polluterIncludedInBaseline || !Number.isFinite(polluterPollutionValue)) {
-        return followerPollutionValue;
-      }
-      return followerPollutionValue + polluterPollutionValue;
-    })();
-    const percentChangeValue = (Number.isFinite(percentBaselinePollution)
-      && Math.abs(percentBaselinePollution) > 0
-      && Number.isFinite(replacementPollution))
-      ? ((replacementPollution - percentBaselinePollution) / Math.abs(percentBaselinePollution)) * 100
-      : null;
-    const warningChangeMeta = (() => {
-      if (!Number.isFinite(percentChangeValue) || percentChangeValue === 0) {
-        return null;
-      }
-      const isIncrease = percentChangeValue > 0;
-      const directionLabel = isIncrease ? 'INCREASE' : 'decrease';
-      const formattedPercent = formatPercentChange(percentChangeValue);
-      if (!formattedPercent) {
-        return null;
-      }
-      const article = isIncrease ? 'an' : 'a';
-      const plainText = `This is ${article} ${directionLabel} of ${formattedPercent}`;
-      const percentHtml = `<span class="comparison-warning-percent">${escapeHtml(formattedPercent)}</span>`;
-      const directionHtml = `<span class="comparison-warning-direction ${isIncrease ? 'comparison-warning-direction--increase' : 'comparison-warning-direction--decrease'}">${escapeHtml(directionLabel)}</span>`;
-      const html = `This is ${escapeHtml(article)} ${directionHtml} of ${percentHtml}`;
-      return {
-        text: plainText,
-        value: percentChangeValue,
-        direction: directionLabel,
-        html
-      };
-    })();
-    const warningChangeText = warningChangeMeta?.text || null;
-    const warningChangeDisplayHtml = warningChangeMeta?.html || null;
-
-    const pollutionLeaderLabel = `<span class="comparison-warning-entity">${escapeHtml(pollutionLeaderName)}</span>`;
-    const energyLeaderLabel = `<span class="comparison-warning-entity">${escapeHtml(energyLeaderName)}</span>`;
-
-    const pollutionArrowClass = ratioIndicatesLower ? 'comparison-arrow down green' : 'comparison-arrow up red';
-    const pollutionRatioLine = `${formatRatio(pollutionRatio)} times`;
-    const pollutionRatioFollowerLine = pollutionFollowerName
-      ? (ratioIndicatesLower ? `lower than ${pollutionFollowerName}` : `higher than ${pollutionFollowerName}`)
-      : (ratioIndicatesLower ? 'lower pollution' : 'higher pollution');
-
-    const energyFollowerLine = energyFollowerName || '';
-    const energyTrend = Number.isFinite(energyRatio) && energyRatio < 1 ? 'lower' : 'higher';
-    const energyRatioLine = `${formatRatio(energyRatio)} times`;
-
-    const buildMetricCardData = (metrics) => {
-      if (!metrics) {
-        return null;
-      }
-      return {
-        name: metrics.name || '—',
-        pollution: formatDetailedPollution(metrics.pollution),
-        energy: formatDetailedEnergy(metrics.energy),
-        emissionFactor: formatEmissionFactorDetailed(metrics.emissionFactor)
-      };
-    };
-
-    const exportMetricCards = [
-      buildMetricCardData(leftPrimaryMetrics),
-      buildMetricCardData(leftSecondaryMetrics)
-    ].filter(Boolean);
-
-
-    // Only include the Energy calculation if there is no inclusion note
-    const calculationBlocks = [
-      { title: 'Pollution ratio', lines: pollutionFormulaLines },
-      { title: 'Energy ratio', lines: energyFormulaLines }
-    ];
-    if (!inclusionNoteText && energyDetailLines.length) {
-      calculationBlocks.push({ title: 'Energy', lines: energyDetailLines, showEnergy: true });
-    }
-    // If inclusion note is present, do NOT add the energy calculation
-    calculationBlocks.push({ title: 'Pollution estimate', lines: pollutionEstimateLines });
-    const filteredCalculationBlocks = calculationBlocks.filter(block => Array.isArray(block.lines) && block.lines.length);
-
-    const comparisonWarningText = (pollutionLeaderName && energyLeaderName)
-      ? `If ${pollutionLeaderName} replaced ${energyLeaderName}, ${pollutantName} pollution would be ${warningValueParts.display}`
-      : null;
-
-    const warningChangeHtml = warningChangeDisplayHtml
-      ? `<br><span class="comparison-warning-change">${warningChangeDisplayHtml}</span>`
-      : '';
-
-    setComparisonExportStore(buildComparisonExportPayload({
-      pollutionCard: {
-        title: pollutionLeaderName,
-        subtitle: `${pollutantName} pollution`,
-        ratioLine: pollutionRatioLine,
-        followerLine: pollutionRatioFollowerLine,
-        color: pollutionCardColor,
-        trend: ratioIndicatesLower ? 'lower' : 'higher'
-      },
-      energyCard: {
-        title: energyLeaderName,
-        subtitle: 'Energy',
-        ratioLine: energyRatioLine,
-        followerLine: energyFollowerLine,
-        color: energyCardColor,
-        trend: energyTrend
-      },
-      warningText: comparisonWarningText,
-      warningValueDisplay: warningValueParts.display,
-      warningValueParts,
-      warningContext: {
-        polluterName: pollutionLeaderName,
-        baselineName: energyLeaderName,
-        pollutantName,
-        changePercent: warningChangeMeta?.value || null
-      },
-      warningChangeText,
-      metricCards: exportMetricCards,
-      calculationBlocks: filteredCalculationBlocks,
-      inclusionNoteText,
-      inclusionNoteLabel: inclusionNoteText ? 'Note: ' : null,
-      inclusionNoteDetails: inclusionNoteText ? energyDetailLines : null,
-      shouldReplaceEnergyCalc: Boolean(inclusionNoteText)
-    }));
-
-    const warningPrimaryHtml = `If ${pollutionLeaderLabel} replaced ${energyLeaderLabel}, ${pollutantName} pollution would be ${warningValueHtml}`;
-    const warningDisplayHtml = `${warningPrimaryHtml}${warningChangeHtml}`;
-
-    const comparisonDivMarkup = `
-      <div class="comparison-layout">
-        <div class="comparison-row">
-          <div class="${pollutionArrowClass}" aria-hidden="true"></div>
-          <div class="${pollutionCardClasses}" tabindex="0" aria-label="${escapeHtml(`Show detailed pollution metrics for ${pollutionLeaderName}`)}" style="background:${pollutionCardColor};">
-            <div class="comparison-card-line comparison-card-line-large">${pollutionLeaderName}</div>
-            <div class="comparison-card-line comparison-card-line-small">${pollutantName} pollution</div>
-            <div class="comparison-card-line comparison-card-line-large">${pollutionRatioLine}</div>
-            <div class="comparison-card-line comparison-card-line-small">${pollutionRatioFollowerLine}</div>
-            ${sharedTooltipMarkup}
-          </div>
-          <div class="${energyCardClasses}" tabindex="0" aria-label="${escapeHtml(`Show detailed energy metrics for ${energyLeaderName}`)}" style="background:${energyCardColor};">
-            <div class="comparison-card-line comparison-card-line-large">${energyLeaderName}</div>
-            <div class="comparison-card-line comparison-card-line-small">Energy</div>
-            <div class="comparison-card-line comparison-card-line-large">${energyRatioLine}</div>
-            <div class="comparison-card-line comparison-card-line-small">${energyFollowerLine}</div>
-            ${sharedTooltipMarkup}
-          </div>
-          <div class="comparison-arrow up green" aria-hidden="true"></div>
-        </div>
-
-        <div class="comparison-warning-wrap">
-          <div class="comparison-warning-icon" aria-hidden="true"></div>
-          <div class="comparison-warning-row" tabindex="0" aria-label="${escapeHtml('Show calculation behind the replacement warning')}">
-            <div class="comparison-warning-text">${warningDisplayHtml}</div>
-            ${warningTooltipMarkup}
-          </div>
-          <div class="comparison-warning-icon" aria-hidden="true"></div>
-        </div>
-      </div>
-    `;
-    const measuredChromeHeight = updateComparisonMeasurement(comparisonDivMarkup);
-    comparisonDiv.innerHTML = comparisonDivMarkup;
     comparisonDiv.className = 'comparison-statement';
-    const visibleComparisonHeight = getElementHeight(comparisonDiv);
-    if (Number.isFinite(visibleComparisonHeight) && visibleComparisonHeight >= 0) {
-      persistComparisonChromeHeight(visibleComparisonHeight);
-    } else if (Number.isFinite(measuredChromeHeight)) {
-      persistComparisonChromeHeight(measuredChromeHeight);
-    }
-
-      if (wasVisible) {
-        setPendingComparisonChromeHeight(true);
-      suppressWrapperHeightObserver();
-      scheduleComparisonChromeRefresh('comparison-update');
-    }
-
-    setComparisonStatementVisibility(true, wasVisible ? 'comparison-update' : 'comparison-show');
-      comparisonDebugLog('comparison statement rendered', {
-        wasVisible,
-        pollutionLeader: comparisonData?.leftPrimary?.displayName || pollutionLeaderName,
-        energyLeader: comparisonData?.energyPrimary?.displayName || energyLeaderName,
-        pendingComparisonChromeHeight,
-        measuredChromeHeight
-      });
   }
-}
-
-function buildComparisonExportPayload({
-  pollutionCard,
-  energyCard,
-  warningText,
-  warningValueDisplay,
-  warningValueParts = null,
-  warningContext = null,
-  warningChangeText = null,
-  metricCards,
-  calculationBlocks,
-  inclusionNoteText,
-  inclusionNoteLabel,
-  inclusionNoteDetails,
-  shouldReplaceEnergyCalc = false
-}) {
-  if (!pollutionCard || !energyCard) {
-    return null;
-  }
-
-  const applyCardDefaults = (card, fallbackColor) => ({
-    title: card.title || '—',
-    subtitle: card.subtitle || '',
-    ratioLine: card.ratioLine || '—',
-    followerLine: card.followerLine || '',
-    color: card.color || fallbackColor,
-    trend: card.trend === 'lower' ? 'lower' : 'higher'
-  });
-
-  return {
-    cards: {
-      left: applyCardDefaults(pollutionCard, '#f26522'),
-      right: applyCardDefaults(energyCard, '#0a77c4')
-    },
-    warning: warningText ? {
-      text: warningText,
-      valueDisplay: warningValueDisplay || warningValueParts?.display || warningText,
-      valueText: warningValueParts?.valueText || null,
-      valueUnit: warningValueParts?.unitText || '',
-      polluterName: warningContext?.polluterName || null,
-      baselineName: warningContext?.baselineName || null,
-      pollutantName: warningContext?.pollutantName || null,
-      changeText: warningChangeText || null,
-      changePercent: warningContext?.changePercent ?? null
-    } : null,
-    metrics: Array.isArray(metricCards) ? metricCards : [],
-    calcBlocks: Array.isArray(calculationBlocks) ? calculationBlocks : [],
-    inclusionNote: inclusionNoteText || null,
-    inclusionNoteLabel: inclusionNoteLabel || null,
-    inclusionNoteDetails: Array.isArray(inclusionNoteDetails) ? inclusionNoteDetails.filter(Boolean) : null,
-    shouldReplaceEnergyCalc
-  };
 }
 
 /**
@@ -3910,10 +2483,6 @@ function hideComparisonStatement() {
   const comparisonDiv = document.getElementById('comparisonDiv');
   if (comparisonDiv) {
     comparisonDiv.style.display = 'none';
-    clearComparisonMeasurement();
-    setComparisonStatementVisibility(false, 'comparison-hide');
-      comparisonDebugLog('comparison statement hidden');
-    clearComparisonExportStore();
   } else {
   }
 }
@@ -3958,29 +2527,20 @@ function updateURL() {
 
   // Convert category names to IDs for URL
   const allCategories = window.supabaseModule.allCategories || [];
-  const categoryRows = Array.from(document.querySelectorAll('.categoryRow'));
-
-  const categoryIdsWithFlags = categoryRows.reduce((acc, row) => {
-    const select = row.querySelector('select');
-    const value = select?.value;
-    if (!value) {
-      return acc;
-    }
-
-    const category = allCategories.find(g => getCategoryDisplayTitle(g) === value);
-    if (!category) {
-      return acc;
-    }
-
-    const checkbox = row.querySelector('.comparison-checkbox');
+  const categoryRows = document.querySelectorAll('.categoryRow');
+  
+  const categoryIdsWithFlags = selectedCategoryNames.map((name, index) => {
+    const category = allCategories.find(g => getCategoryDisplayTitle(g) === name);
+    if (!category) return null;
+    
+    // Check if the corresponding checkbox is checked
+    const row = categoryRows[index];
+    const checkbox = row?.querySelector('.comparison-checkbox');
     const isChecked = checkbox?.checked || false;
-    acc.push(isChecked ? `${category.id}c` : `${category.id}`);
-    return acc;
-  }, []);
-
-  if (!categoryIdsWithFlags.length) {
-    return;
-  }
+    
+    // Add 'c' suffix if checkbox is checked
+    return isChecked ? `${category.id}c` : `${category.id}`;
+  }).filter(id => id !== null);
 
   // Build params array - use raw strings to avoid encoding commas
   const params = [

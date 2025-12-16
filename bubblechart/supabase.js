@@ -107,16 +107,10 @@ function normalizeChartId(value) {
     return null;
   }
   const normalized = String(value).trim().toLowerCase();
-  if (normalized === '1'
-    || normalized === 'bubble'
-    || normalized === 'bubblechart'
-    || normalized === 'bubble-chart') {
+  if (normalized === '1' || normalized === 'bubble' || normalized === 'bubble-chart') {
     return '1';
   }
-  if (normalized === '2'
-    || normalized === 'line'
-    || normalized === 'linechart'
-    || normalized === 'line-chart') {
+  if (normalized === '2' || normalized === 'line' || normalized === 'line-chart') {
     return '2';
   }
   return normalized;
@@ -218,16 +212,11 @@ const BUBBLE_SUPABASE_DATA_SOURCES = new Set(['hero', 'shared-bootstrap', 'share
 const BUBBLE_FAILURE_EVENT_COOLDOWN_MS = 60000;
 const bubbleFailureEventScopes = new Map();
 let categoryMetadataCache = null;
-let categoryMetadataCacheHasSignals = false;
 let categoryMetadataPromise = null;
 let sharedLoaderReference = null;
 let bubbleInitialDatasetInfo = null;
 let bubbleFullDatasetPromise = null;
 let fullDatasetToastShown = false;
-const CATEGORY_ALL_SOURCES_TOKEN = '__ALL_SOURCES__';
-const CATEGORY_ALL_FUELS_TOKEN = '__ALL_FUELS__';
-let categoryCompositionMapCache = null;
-let categoryCompositionMapPromise = null;
 
 function sortNumericList(values = []) {
   return values.slice().sort((a, b) => a - b);
@@ -376,10 +365,7 @@ function parseIdList(value) {
   if (!value) {
     return [];
   }
-  return value
-    .split(',')
-    .map(part => parseInt(part.trim(), 10))
-    .filter(num => Number.isFinite(num));
+  return value.split(',').map(part => Number(part.trim())).filter(num => Number.isFinite(num));
 }
 
 function parseNameList(value) {
@@ -539,7 +525,7 @@ async function trackAnalytics(eventName, details = {}) {
   return performAnalyticsWrite(eventName, details);
 }
 
-function shouldEmitBubbleFailureEvent(scopeKey = 'bubblechart', forceEvent = false) {
+function shouldEmitBubbleFailureEvent(scopeKey = 'bubble_chart', forceEvent = false) {
   if (forceEvent) {
     bubbleFailureEventScopes.set(scopeKey, Date.now());
     return true;
@@ -586,7 +572,7 @@ function emitBubbleDatasetLoadedMetrics({ source, rowsCount = 0, startedAt = nul
     : null;
 
   return trackAnalytics('sbase_data_loaded', {
-    page: 'bubblechart',
+    page: 'bubble_chart',
     source,
     loadMode: resolveBubbleLoadMode(source),
     durationMs,
@@ -604,7 +590,7 @@ function recordBubbleSupabaseFailure(meta = {}) {
   const inactiveChartMode = typeof meta.inactiveChartMode === 'boolean' ? meta.inactiveChartMode : undefined;
   const reason = meta.reason || null;
   const analyticsPayload = {
-    page: 'bubblechart',
+    page: 'bubble_chart',
     source,
     message,
     durationMs,
@@ -615,7 +601,7 @@ function recordBubbleSupabaseFailure(meta = {}) {
   };
 
   const pageSlug = meta.pageSlug || '/bubblechart';
-  const scopeKey = meta.scopeKey || 'bubblechart';
+  const scopeKey = meta.scopeKey || 'bubble_chart';
   const shouldEmitAnalytics = shouldEmitBubbleFailureEvent(scopeKey, Boolean(meta.forceEvent));
 
   const tasks = [];
@@ -679,75 +665,15 @@ function getCachedCategoryMetadata(sharedLoader) {
   return null;
 }
 
-function hasCategoryCompositionSignals(rows = []) {
-  if (!Array.isArray(rows) || !rows.length) {
-    return false;
-  }
-
-  const signalKeys = [
-    'source_name', 'source', 'Source', 'source_slug', 'primary_source',
-    'activity_name', 'activity', 'Activity', 'activity_slug', 'activity_group', 'activity_type',
-    'nfr_code', 'nfr_codes', 'fuel', 'fuel_name', 'fuel_type'
-  ];
-
-  return rows.some(row => {
-    if (!row || typeof row !== 'object') {
-      return false;
-    }
-
-    if (Array.isArray(row.source_activity_pairs) && row.source_activity_pairs.length) {
-      return true;
-    }
-    if (Array.isArray(row.activity_composition) && row.activity_composition.length) {
-      return true;
-    }
-    if (Array.isArray(row.included_categories) && row.included_categories.length) {
-      return true;
-    }
-    if (row.source_activity_map && typeof row.source_activity_map === 'object' && Object.keys(row.source_activity_map).length) {
-      return true;
-    }
-
-    return signalKeys.some(key => {
-      if (!(key in row)) {
-        return false;
-      }
-      const value = row[key];
-      if (value === null || value === undefined) {
-        return false;
-      }
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
-      if (typeof value === 'object') {
-        return Object.keys(value).length > 0;
-      }
-      if (typeof value === 'string') {
-        return Boolean(value.trim());
-      }
-      return true;
-    });
-  });
-}
-
 async function ensureAllCategoryMetadata(sharedLoader) {
   if (Array.isArray(categoryMetadataCache) && categoryMetadataCache.length) {
-    if (categoryMetadataCacheHasSignals) {
-      return categoryMetadataCache;
-    }
+    return categoryMetadataCache;
   }
 
   const cachedCategories = getCachedCategoryMetadata(sharedLoader);
   if (Array.isArray(cachedCategories) && cachedCategories.length) {
-    const cachedHasSignals = hasCategoryCompositionSignals(cachedCategories);
-    if (!Array.isArray(categoryMetadataCache) || !categoryMetadataCache.length || cachedHasSignals) {
-      categoryMetadataCache = cachedCategories;
-      categoryMetadataCacheHasSignals = cachedHasSignals;
-      resetCategoryCompositionCache();
-    }
-    if (categoryMetadataCacheHasSignals) {
-      return categoryMetadataCache;
-    }
+    categoryMetadataCache = cachedCategories;
+    return categoryMetadataCache;
   }
 
   if (!categoryMetadataPromise) {
@@ -761,18 +687,12 @@ async function ensureAllCategoryMetadata(sharedLoader) {
         throw response.error;
       }
       categoryMetadataCache = response.data || [];
-      categoryMetadataCacheHasSignals = hasCategoryCompositionSignals(categoryMetadataCache);
-      resetCategoryCompositionCache();
       return categoryMetadataCache;
     })().catch(error => {
       console.error('Failed to fetch category metadata:', error);
       categoryMetadataPromise = null;
       throw error;
     });
-  }
-
-  if (Array.isArray(categoryMetadataCache) && categoryMetadataCache.length) {
-    return categoryMetadataCache;
   }
 
   return categoryMetadataPromise;
@@ -805,290 +725,6 @@ function mergeCategoryCollections(primary = [], secondary = []) {
   secondary.forEach(push);
 
   return merged;
-}
-
-function resetCategoryCompositionCache() {
-  categoryCompositionMapCache = null;
-  categoryCompositionMapPromise = null;
-}
-
-function isCategoryNullToken(value) {
-  if (value === null || value === undefined) {
-    return true;
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return !trimmed || trimmed.toLowerCase() === 'null';
-  }
-  return false;
-}
-
-function normalizeCategoryValue(value) {
-  if (value === null || value === undefined) {
-    return '';
-  }
-  if (typeof value === 'string') {
-    return value.trim();
-  }
-  return String(value).trim();
-}
-
-function splitCategoryMultiValue(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map(normalizeCategoryValue)
-      .filter(entry => entry && !isCategoryNullToken(entry));
-  }
-  const normalized = normalizeCategoryValue(value);
-  if (!normalized || isCategoryNullToken(normalized)) {
-    return [];
-  }
-  if (!/[;\n]/.test(normalized)) {
-    return [normalized];
-  }
-  return normalized
-    .split(/[;\n]+/)
-    .map(entry => entry.trim())
-    .filter(entry => entry && !isCategoryNullToken(entry));
-}
-
-function splitCategoryCodeList(value) {
-  const normalized = normalizeCategoryValue(value);
-  if (!normalized) {
-    return [];
-  }
-  return normalized
-    .split(/[;,\n]+/)
-    .map(entry => entry.trim())
-    .filter(entry => entry && !isCategoryNullToken(entry));
-}
-
-function buildCategoryCompositionMap(rows = []) {
-  const map = new Map();
-  rows.forEach(row => {
-    const id = Number(row?.id ?? row?.category_id);
-    if (!Number.isFinite(id)) {
-      return;
-    }
-    const title = normalizeCategoryValue(row?.category_title || row?.group_name || row?.name);
-    let entry = map.get(id);
-    if (!entry) {
-      entry = {
-        id,
-        title,
-        sources: new Set(),
-        activities: new Set(),
-        sourceToActivities: new Map(),
-        nfrCodes: new Set(),
-        coversAllSources: false,
-        coversAllFuels: false,
-        hasSourceSignals: false,
-        hasActivitySignals: false
-      };
-      map.set(id, entry);
-    }
-
-    const sourceValues = splitCategoryMultiValue(row?.source_name ?? row?.source ?? row?.Source);
-    const activityValues = splitCategoryMultiValue(row?.activity_name ?? row?.activity ?? row?.Activity);
-    const nfrValues = splitCategoryCodeList(row?.nfr_code ?? row?.nfr_codes ?? '');
-
-    if (nfrValues.length) {
-      entry.hasSourceSignals = true;
-      nfrValues.forEach(code => entry.nfrCodes.add(code));
-    }
-
-    if (!sourceValues.length) {
-      entry.coversAllSources = true;
-      sourceValues.push(CATEGORY_ALL_SOURCES_TOKEN);
-    } else {
-      entry.hasSourceSignals = true;
-    }
-
-    if (!activityValues.length) {
-      entry.coversAllFuels = true;
-      activityValues.push(CATEGORY_ALL_FUELS_TOKEN);
-    } else {
-      entry.hasActivitySignals = true;
-    }
-
-    sourceValues.forEach(source => {
-      if (source !== CATEGORY_ALL_SOURCES_TOKEN) {
-        entry.sources.add(source);
-      }
-      let activitySet = entry.sourceToActivities.get(source);
-      if (!activitySet) {
-        activitySet = new Set();
-        entry.sourceToActivities.set(source, activitySet);
-      }
-      activityValues.forEach(activity => {
-        if (activity !== CATEGORY_ALL_FUELS_TOKEN) {
-          entry.activities.add(activity);
-        }
-        activitySet.add(activity);
-      });
-    });
-  });
-  return map;
-}
-
-function doesActivitySetCoverAllFuels(activitySet) {
-  if (!activitySet || !activitySet.size) {
-    return true;
-  }
-  return activitySet.has(CATEGORY_ALL_FUELS_TOKEN);
-}
-
-function collectContainerActivitySet(container, sourceKey) {
-  const merged = new Set();
-  const specificSet = container.sourceToActivities.get(sourceKey);
-  const globalSet = container.sourceToActivities.get(CATEGORY_ALL_SOURCES_TOKEN);
-  if (specificSet) {
-    specificSet.forEach(value => merged.add(value));
-  }
-  if (globalSet) {
-    globalSet.forEach(value => merged.add(value));
-  }
-  return merged;
-}
-
-function evaluateCategorySubset(candidate, container) {
-  if (!candidate || !container) {
-    return null;
-  }
-
-  const candidateHasSources = candidate.hasSourceSignals || candidate.nfrCodes.size;
-  if (!candidateHasSources) {
-    return null;
-  }
-
-  if (!candidate.sourceToActivities.size && candidate.nfrCodes.size) {
-    if (!container.nfrCodes.size) {
-      return null;
-    }
-    const subset = Array.from(candidate.nfrCodes).every(code => container.nfrCodes.has(code));
-    return subset;
-  }
-
-  const containerSupportsAllSources = container.coversAllSources || container.sourceToActivities.has(CATEGORY_ALL_SOURCES_TOKEN);
-  if (!containerSupportsAllSources && !container.sourceToActivities.size) {
-    return null;
-  }
-
-  for (const [sourceKey, candidateActivities] of candidate.sourceToActivities.entries()) {
-    const normalizedSource = sourceKey || CATEGORY_ALL_SOURCES_TOKEN;
-    const sourceCovered = normalizedSource === CATEGORY_ALL_SOURCES_TOKEN
-      ? containerSupportsAllSources
-      : containerSupportsAllSources
-        || container.sourceToActivities.has(normalizedSource)
-        || container.sources.has(normalizedSource);
-
-    if (!sourceCovered) {
-      return false;
-    }
-
-    if (doesActivitySetCoverAllFuels(candidateActivities)) {
-      if (container.coversAllFuels) {
-        continue;
-      }
-      const containerActivities = collectContainerActivitySet(container, normalizedSource);
-      if (!doesActivitySetCoverAllFuels(containerActivities)) {
-        return false;
-      }
-      continue;
-    }
-
-    if (container.coversAllFuels) {
-      continue;
-    }
-
-    const containerActivities = collectContainerActivitySet(container, normalizedSource);
-    if (!containerActivities.size) {
-      return false;
-    }
-    if (doesActivitySetCoverAllFuels(containerActivities)) {
-      continue;
-    }
-
-    for (const activity of candidateActivities) {
-      if (activity === CATEGORY_ALL_FUELS_TOKEN) {
-        if (!doesActivitySetCoverAllFuels(containerActivities)) {
-          return false;
-        }
-        continue;
-      }
-      if (!containerActivities.has(activity)) {
-        return false;
-      }
-    }
-  }
-
-  if (candidate.nfrCodes.size && container.nfrCodes.size) {
-    const subset = Array.from(candidate.nfrCodes).every(code => container.nfrCodes.has(code));
-    if (!subset) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-async function ensureCategoryCompositionMap(sharedLoader) {
-  if (categoryCompositionMapCache) {
-    return categoryCompositionMapCache;
-  }
-  if (!categoryCompositionMapPromise) {
-    categoryCompositionMapPromise = (async () => {
-      const metadataRows = await ensureAllCategoryMetadata(sharedLoader);
-      if (!Array.isArray(metadataRows) || !metadataRows.length) {
-        return null;
-      }
-      categoryCompositionMapCache = buildCategoryCompositionMap(metadataRows);
-      return categoryCompositionMapCache;
-    })().catch(error => {
-      categoryCompositionMapPromise = null;
-      throw error;
-    });
-  }
-  return categoryCompositionMapPromise;
-}
-
-async function getCategoryMetadataMap(sharedLoader) {
-  try {
-    const loader = sharedLoader || await resolveSharedLoader();
-    return await ensureCategoryCompositionMap(loader);
-  } catch (error) {
-    supabaseDebugWarn('Category metadata map unavailable:', error?.message || error);
-    return null;
-  }
-}
-
-async function assessCategoryInclusion(candidateId, containerId, options = {}) {
-  const childId = Number(candidateId);
-  const parentId = Number(containerId);
-  if (!Number.isFinite(childId) || !Number.isFinite(parentId)) {
-    return { included: null, reason: 'invalid-id' };
-  }
-
-  try {
-    const loader = options.sharedLoader || await resolveSharedLoader();
-    const map = await ensureCategoryCompositionMap(loader);
-    if (!map) {
-      return { included: null, reason: 'missing-map' };
-    }
-    const candidate = map.get(childId);
-    const container = map.get(parentId);
-    if (!candidate || !container) {
-      return { included: null, reason: 'missing-category' };
-    }
-    const evaluation = evaluateCategorySubset(candidate, container);
-    if (evaluation === null) {
-      return { included: null, reason: 'inconclusive' };
-    }
-    return { included: evaluation === true, reason: 'evaluated' };
-  } catch (error) {
-    supabaseDebugWarn('assessCategoryInclusion failed:', error?.message || error);
-    return { included: null, reason: 'error' };
-  }
 }
 
 function waitForFirstDatasetCandidate(promises = [], logError = () => {}) {
@@ -1232,7 +868,7 @@ async function loadData(options = {}) {
   let snapshotPromise = null;
   const loadStartedAt = bubbleDataNow();
   const queryDetails = {
-    page: 'bubblechart',
+    page: 'bubble_chart',
     hasUrlOverrides: urlOverridesActive,
     snapshotEligible: defaultChartMode,
     sharedLoaderAvailable: Boolean(sharedLoader),
@@ -1297,12 +933,6 @@ async function loadData(options = {}) {
               categories: categories.length,
               rows: rows.length
             });
-            swallowBubblePromise(emitBubbleDatasetLoadedMetrics({
-              source: 'cache',
-              rowsCount: cachedRows.length,
-              startedAt: loadStartedAt,
-              fullDataset: true
-            }));
           } else {
             swallowBubblePromise(recordBubbleSupabaseFailure({
               source: 'cache',
@@ -1375,7 +1005,7 @@ async function loadData(options = {}) {
           });
 
           await trackAnalytics('json_data_loaded', {
-            page: 'bubblechart',
+            page: 'bubble_chart',
             durationMs: snapshotDuration,
             generatedAt: normalizedSnapshot?.generatedAt || snapshot.generatedAt || null,
             rows: rows.length,
@@ -1473,7 +1103,7 @@ async function loadData(options = {}) {
             }
           });
           await trackAnalytics('json_data_loaded', {
-            page: 'bubblechart',
+            page: 'bubble_chart',
             durationMs: snapshotDuration,
             generatedAt: snapshot.generatedAt || null,
             rows: rows.length,
@@ -1522,12 +1152,6 @@ async function loadData(options = {}) {
             categories: categories.length,
             rows: rows.length
           });
-          swallowBubblePromise(emitBubbleDatasetLoadedMetrics({
-            source: 'shared-loader',
-            rowsCount: Array.isArray(sharedData?.timeseries) ? sharedData.timeseries.length : 0,
-            startedAt: loadStartedAt,
-            fullDataset: true
-          }));
         } catch (error) {
           console.error('Shared loader failed, falling back to direct load:', error);
           const directFetchStartedAt = bubbleDataNow();
@@ -1631,8 +1255,6 @@ async function loadData(options = {}) {
             return;
           }
           categoryMetadataCache = mergeCategoryCollections(metadata, categoryMetadataCache || []);
-          categoryMetadataCacheHasSignals = hasCategoryCompositionSignals(categoryMetadataCache);
-          resetCategoryCompositionCache();
         })
         .catch(error => {
           supabaseDebugWarn('Unable to load full category metadata before hydration:', error.message || error);
@@ -1841,21 +1463,8 @@ function applyDataset({ pollutants = [], categories = [], rows = [] }, options =
   allPollutants = pollutants;
   allCategories = categories;
   if (Array.isArray(categories) && categories.length) {
-    const datasetHasSignals = hasCategoryCompositionSignals(categories);
-
-    if (!Array.isArray(categoryMetadataCache) || !categoryMetadataCache.length) {
+    if (!Array.isArray(categoryMetadataCache) || categories.length > categoryMetadataCache.length) {
       categoryMetadataCache = categories;
-      categoryMetadataCacheHasSignals = datasetHasSignals;
-      if (datasetHasSignals) {
-        resetCategoryCompositionCache();
-      }
-    } else if (datasetHasSignals) {
-      const shouldReplace = !categoryMetadataCacheHasSignals || categories.length > categoryMetadataCache.length;
-      if (shouldReplace) {
-        categoryMetadataCache = categories;
-        categoryMetadataCacheHasSignals = true;
-        resetCategoryCompositionCache();
-      }
     }
   }
   globalRows = rows;
@@ -2178,9 +1787,6 @@ try {
     getCategoryName,
     getPollutantShortName,
     getCategoryShortTitle,
-    getCategoryMetadataMap: () => getCategoryMetadataMap().catch(() => categoryCompositionMapCache || null),
-    getCachedCategoryMetadataMap: () => categoryCompositionMapCache,
-    assessCategoryInclusion,
     get allPollutants() { return allPollutants; },
     get allCategories() { return allCategories; },
     get allCategoriesList() { return allCategoriesList; },

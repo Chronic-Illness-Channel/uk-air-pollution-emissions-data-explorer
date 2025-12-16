@@ -21,14 +21,6 @@ const sharedDataInfoLog = (() => {
   const info = console.info ? console.info.bind(console) : console.log.bind(console);
   return (...args) => info('[SharedData]', ...args);
 })();
-const sharedDataLightLog = (() => {
-  const log = console.log.bind(console);
-  return (...args) => log('[SharedData]', ...args);
-})();
-const sharedDataWarnLog = (() => {
-  const warn = console.warn ? console.warn.bind(console) : console.log.bind(console);
-  return (...args) => warn('[SharedData]', ...args);
-})();
 const sharedDataNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 const SHARED_FAILURE_EVENT_COOLDOWN_MS = 60000;
 const sharedFailureEventScopes = new Map();
@@ -244,7 +236,7 @@ const HERO_DEFAULT_ACTIVITY_NAME = 'Activity Data';
 async function fetchDefaultSnapshotFromPaths() {
   for (const candidate of DEFAULT_SNAPSHOT_PATHS) {
     try {
-      sharedDataDebugLog('Attempting to fetch default snapshot', { candidate });
+      sharedDataInfoLog('Attempting to fetch default snapshot', { candidate });
       const fetchStart = sharedDataNow();
       const response = await fetch(candidate, { cache: 'no-store' });
       if (!response.ok) {
@@ -260,12 +252,10 @@ async function fetchDefaultSnapshotFromPaths() {
             years: snapshot.data.years?.length || 0
           }
         : null;
-      sharedDataLightLog('Default snapshot loaded', {
-        path: candidate,
+      sharedDataInfoLog('Default snapshot loaded', {
+        candidate,
         durationMs: duration,
-        poll: counts?.pollutants || 0,
-        cat: counts?.categories || 0,
-        rows: counts?.rows || 0
+        counts
       });
       return snapshot;
     } catch (error) {
@@ -331,7 +321,7 @@ function uniqStrings(values = []) {
 
 async function loadDefaultSnapshot() {
   if (window.SharedDataCache.defaultSnapshot) {
-    sharedDataDebugLog('Using cached default JSON snapshot', {
+    sharedDataInfoLog('Using cached default JSON snapshot', {
       generatedAt: window.SharedDataCache.defaultSnapshot.generatedAt || null
     });
     return window.SharedDataCache.defaultSnapshot;
@@ -570,13 +560,13 @@ async function loadSharedData() {
   
   // If data is already loaded, return immediately
   if (cache.isLoaded) {
-    sharedDataDebugLog('Shared data fulfilled from cache');
+    sharedDataInfoLog('Shared data fulfilled from cache');
     return cache.data;
   }
   
   // If loading is in progress, return the existing promise
   if (cache.isLoading && cache.loadPromise) {
-    sharedDataDebugLog('Awaiting in-flight shared data load');
+    sharedDataInfoLog('Awaiting in-flight shared data load');
     return await cache.loadPromise;
   }
   
@@ -624,7 +614,7 @@ function bootstrapFullDataset(reason = 'chart') {
  * Actually fetch data from Supabase
  */
 async function loadDataFromSupabase() {
-  sharedDataLightLog('Supabase fetch start');
+  sharedDataInfoLog('Starting shared Supabase fetch');
   
   const client = getSupabaseClient();
   const cache = window.SharedDataCache;
@@ -632,11 +622,11 @@ async function loadDataFromSupabase() {
 
   const timedQuery = (label, promise) => {
     const start = sharedDataNow();
-    sharedDataLightLog('Supabase query start', { label });
+    sharedDataInfoLog(`Supabase query started`, { label });
     return promise.then(response => {
       const duration = (sharedDataNow() - start).toFixed(1);
       if (response?.error) {
-        sharedDataLightLog('Supabase query failed', {
+        sharedDataInfoLog('Supabase query failed', {
           label,
           durationMs: Number(duration),
           message: response.error.message || String(response.error)
@@ -648,7 +638,7 @@ async function loadDataFromSupabase() {
           source: 'shared-loader-query'
         });
       } else {
-        sharedDataLightLog('Supabase query done', {
+        sharedDataInfoLog('Supabase query completed', {
           label,
           durationMs: Number(duration),
           rows: Array.isArray(response?.data) ? response.data.length : 0
@@ -657,7 +647,7 @@ async function loadDataFromSupabase() {
       return response;
     }).catch(error => {
       const duration = Number((sharedDataNow() - start).toFixed(1));
-      sharedDataLightLog('Supabase query error', {
+      sharedDataInfoLog('Supabase query threw', {
         label,
         durationMs: duration,
         message: error?.message || String(error)
@@ -701,8 +691,8 @@ async function loadDataFromSupabase() {
   window.allPollutantsData = pollutants;
   window.allCategoryInfo = categories;
   
-  sharedDataLightLog('Supabase fetch complete', {
-    durationMs: Number((sharedDataNow() - batchStart).toFixed(1)),
+  sharedDataInfoLog('Shared Supabase fetch completed', {
+    totalDurationMs: Number((sharedDataNow() - batchStart).toFixed(1)),
     summary: {
       pollutants: pollutants.length,
       categories: categories.length,
