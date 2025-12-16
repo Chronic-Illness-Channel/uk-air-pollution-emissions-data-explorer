@@ -1,8 +1,8 @@
 # Version History
 
-## v4.30
+## v4.30 - LIVE
 - GH Test: 2025-12-14
-- GH Live: Not yet deployed
+- GH Live: 2025-12-16
 - Notes: Adds comparison awareness to export modules so downloaded charts, shared links, and social cards include the active comparison statement data.
 
 ## v4.20
@@ -10,7 +10,7 @@
 - GH Live: Not yet deployed
 - Notes: Adds comparison logic to the bubble chart, enabling selectable categories and richer ratio messaging powered by the Supabase colour rules pipeline.
 
-## v4.11 - LIVE
+## v4.11
 - GH Test: 2025-12-09
 - GH Live: 2025-12-09
 - Notes: Refined analytics by routing all share/export interactions through the lightweight tracker.
