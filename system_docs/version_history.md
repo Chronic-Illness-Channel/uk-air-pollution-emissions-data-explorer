@@ -1,6 +1,11 @@
 # Version History
 
-## v4.30 - LIVE
+## v4.31 - LIVE
+- GH Test: 2025-12-17
+- GH Live: 2025-12-17
+- Notes: Hard-refresh regression fix that isolates the bubble and line Supabase loaders (no more `supabase` redeclaration) and adds a harness scenario to guard against future collisions.
+
+## v4.30
 - GH Test: 2025-12-14
 - GH Live: 2025-12-16
 - Notes: Adds comparison awareness to export modules so downloaded charts, shared links, and social cards include the active comparison statement data.
