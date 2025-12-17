@@ -1,3 +1,5 @@
+(function initLineSupabaseModule() {
+// Keep line chart Supabase bindings scoped to avoid conflicts when multiple charts load together.
 /**
  * Supabase Data Module
  * Handles all Supabase database connections, data loading, and analytics tracking
@@ -1605,4 +1607,6 @@ try {
 } catch (error) {
   console.error('Failed to initialize supabaseModule:', error);
 }
+
+})();
 

@@ -1,3 +1,5 @@
+(function initBubbleSupabaseModule() {
+// Isolate bubble Supabase bindings to avoid global collisions with other charts.
 /**
  * Supabase Data Module for Scatter Chart
  * Handles all Supabase database connections, data loading, and analytics tracking
@@ -2202,3 +2204,5 @@ try {
 } catch (error) {
   console.error('Failed to initialize supabaseModule for scatter chart:', error);
 }
+
+})();
