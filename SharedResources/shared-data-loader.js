@@ -31,6 +31,9 @@ const sharedDataWarnLog = (() => {
 })();
 const sharedDataNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 const SHARED_FAILURE_EVENT_COOLDOWN_MS = 60000;
+const SHARED_SUPABASE_MAX_ATTEMPTS = 3;
+const SHARED_SUPABASE_RETRY_BASE_DELAY_MS = 350;
+const SHARED_SUPABASE_RETRY_MAX_DELAY_MS = 2000;
 const sharedFailureEventScopes = new Map();
 
 function normalizeSharedSlug(slug) {
@@ -87,6 +90,39 @@ function swallowSharedPromise(promise) {
   if (promise && typeof promise.then === 'function' && typeof promise.catch === 'function') {
     promise.catch(() => {});
   }
+}
+
+function sharedDelay(ms) {
+  return new Promise(resolve => setTimeout(resolve, Math.max(0, ms)));
+}
+
+function isTransientSupabaseError(error) {
+  if (!error) {
+    return true;
+  }
+  const statusCandidates = [error.status, error.statusCode, error.HTTPStatusCode, error.code]
+    .map(value => Number(value))
+    .filter(Number.isFinite);
+  if (statusCandidates.some(code => [408, 425, 429, 500, 502, 503, 504].includes(code))) {
+    return true;
+  }
+  const message = (error.message || '').toLowerCase();
+  if (!message) {
+    return !statusCandidates.length;
+  }
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('timeout') ||
+    message.includes('abort') ||
+    message.includes('temporarily unavailable')
+  );
+}
+
+function getSupabaseRetryDelay(attempt) {
+  const backoff = SHARED_SUPABASE_RETRY_BASE_DELAY_MS * Math.pow(2, Math.max(0, attempt - 1));
+  const jitter = Math.random() * 150;
+  return Math.min(SHARED_SUPABASE_RETRY_MAX_DELAY_MS, Math.round(backoff + jitter));
 }
 
 function reportSharedSupabaseFailure(context = {}) {
@@ -630,54 +666,76 @@ async function loadDataFromSupabase() {
   const cache = window.SharedDataCache;
   const batchStart = sharedDataNow();
 
-  const timedQuery = (label, promise) => {
-    const start = sharedDataNow();
-    sharedDataLightLog('Supabase query start', { label });
-    return promise.then(response => {
-      const duration = (sharedDataNow() - start).toFixed(1);
-      if (response?.error) {
-        sharedDataLightLog('Supabase query failed', {
+  const timedQuery = async (label, queryFactory, options = {}) => {
+    const maxAttempts = Math.max(1, options.maxAttempts || SHARED_SUPABASE_MAX_ATTEMPTS);
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      const start = sharedDataNow();
+      sharedDataLightLog('Supabase query start', { label, attempt });
+      try {
+        const response = await queryFactory();
+        const duration = Number((sharedDataNow() - start).toFixed(1));
+        if (response?.error) {
+          sharedDataLightLog('Supabase query failed', {
+            label,
+            attempt,
+            durationMs: duration,
+            message: response.error.message || String(response.error)
+          });
+          reportSharedSupabaseFailure({
+            label,
+            durationMs: duration,
+            error: response.error,
+            source: 'shared-loader-query',
+            attempt
+          });
+          const canRetry = attempt < maxAttempts && isTransientSupabaseError(response.error);
+          if (canRetry) {
+            await sharedDelay(getSupabaseRetryDelay(attempt));
+            continue;
+          }
+        } else {
+          sharedDataLightLog('Supabase query done', {
+            label,
+            attempt,
+            durationMs: duration,
+            rows: Array.isArray(response?.data) ? response.data.length : 0
+          });
+        }
+        return response;
+      } catch (error) {
+        const duration = Number((sharedDataNow() - start).toFixed(1));
+        sharedDataLightLog('Supabase query error', {
           label,
-          durationMs: Number(duration),
-          message: response.error.message || String(response.error)
+          attempt,
+          durationMs: duration,
+          message: error?.message || String(error)
         });
         reportSharedSupabaseFailure({
           label,
-          durationMs: Number(duration),
-          error: response.error,
-          source: 'shared-loader-query'
+          durationMs: duration,
+          error,
+          source: 'shared-loader-query',
+          attempt
         });
-      } else {
-        sharedDataLightLog('Supabase query done', {
-          label,
-          durationMs: Number(duration),
-          rows: Array.isArray(response?.data) ? response.data.length : 0
-        });
+        const canRetry = attempt < maxAttempts && isTransientSupabaseError(error);
+        if (canRetry) {
+          await sharedDelay(getSupabaseRetryDelay(attempt));
+          continue;
+        }
+        throw error;
       }
-      return response;
-    }).catch(error => {
-      const duration = Number((sharedDataNow() - start).toFixed(1));
-      sharedDataLightLog('Supabase query error', {
-        label,
-        durationMs: duration,
-        message: error?.message || String(error)
-      });
-      reportSharedSupabaseFailure({
-        label,
-        durationMs: duration,
-        error,
-        source: 'shared-loader-query'
-      });
-      throw error;
-    });
+    }
+    throw new Error(`Supabase query "${label}" exhausted retries`);
   };
   
   // Fetch all required data in parallel
   const [pollutantsResp, categoriesResp, dataResp, nfrResp] = await Promise.all([
-    timedQuery('naei_global_t_pollutant', client.from('naei_global_t_pollutant').select('*')),
-    timedQuery('naei_global_t_category', client.from('naei_global_t_category').select('*')),
-    timedQuery('naei_2023ds_t_category_data', client.from('naei_2023ds_t_category_data').select('*')),
-    timedQuery('naei_global_t_nfrcode', client.from('naei_global_t_nfrcode').select('*'))
+    timedQuery('naei_global_t_pollutant', () => client.from('naei_global_t_pollutant').select('*')),
+    timedQuery('naei_global_t_category', () => client.from('naei_global_t_category').select('*')),
+    timedQuery('naei_2023ds_t_category_data', () => client.from('naei_2023ds_t_category_data').select('*')),
+    timedQuery('naei_global_t_nfrcode', () => client.from('naei_global_t_nfrcode').select('*'))
   ]);
 
   if (pollutantsResp.error) throw pollutantsResp.error;

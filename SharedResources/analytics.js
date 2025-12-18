@@ -32,6 +32,10 @@
     'bubblechart_drawn',
     'linechart_drawn'
   ]);
+  const SUPABASE_ERROR_KEYWORDS = ['supabase', 'postgrest', 'pgrest', 'pg_net', 'gotrue'];
+  const SUPABASE_ERROR_MESSAGE_LIMIT = 600;
+  const SUPABASE_ERROR_DEDUPE_MS = 15000;
+  const SUPABASE_ERROR_HISTORY_LIMIT = 60;
 
   const searchParams = buildSearchParams();
   const debugEnabled = ['debug', 'debugLogs', 'analyticsDebug', 'logs']
@@ -52,6 +56,8 @@
   let heartbeatCount = 0;
   let passiveListenersRegistered = false;
   let lastPassiveActivityAt = 0;
+  const recentSupabaseConsoleFingerprints = new Map();
+  let supabaseConsoleForwardersRegistered = false;
 
   const state = {
     sessionId: loadSessionId(),
@@ -781,8 +787,216 @@
     }
   }
 
+  function looksLikeSupabaseConsoleArg(value) {
+    if (value == null) {
+      return false;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.toLowerCase();
+      return SUPABASE_ERROR_KEYWORDS.some(keyword => normalized.includes(keyword));
+    }
+    if (value instanceof Error) {
+      return looksLikeSupabaseConsoleArg(value.message)
+        || looksLikeSupabaseConsoleArg(value.name)
+        || looksLikeSupabaseConsoleArg(value.stack || '');
+    }
+    if (typeof value === 'object') {
+      if (looksLikeSupabaseConsoleArg(value.message)
+        || looksLikeSupabaseConsoleArg(value.details)
+        || looksLikeSupabaseConsoleArg(value.hint)
+        || looksLikeSupabaseConsoleArg(value.error_description)
+        || looksLikeSupabaseConsoleArg(value.reason)) {
+        return true;
+      }
+      if (typeof value.code === 'string') {
+        const code = value.code.toLowerCase();
+        if (code.startsWith('pgrst') || SUPABASE_ERROR_KEYWORDS.some(keyword => code.includes(keyword))) {
+          return true;
+        }
+      }
+      if (typeof value.source === 'string' && looksLikeSupabaseConsoleArg(value.source)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function stringifyConsoleArg(value) {
+    if (value == null) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    if (value instanceof Error) {
+      return `${value.name || 'Error'}: ${value.message || ''}`.trim();
+    }
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return Object.prototype.toString.call(value);
+    }
+  }
+
+  function buildSupabaseConsoleMessage(args = []) {
+    if (!Array.isArray(args) || !args.length) {
+      return null;
+    }
+    const combined = args
+      .map(stringifyConsoleArg)
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    if (!combined) {
+      return null;
+    }
+    if (combined.length > SUPABASE_ERROR_MESSAGE_LIMIT) {
+      return `${combined.slice(0, SUPABASE_ERROR_MESSAGE_LIMIT)}…`;
+    }
+    return combined;
+  }
+
+  function normalizeConsoleDetails(args = [], extraDetails = null) {
+    const normalizedArgs = args.map(arg => {
+      if (arg instanceof Error) {
+        return {
+          type: 'error',
+          name: arg.name,
+          message: arg.message,
+          code: arg.code || null,
+          stack: arg.stack || null
+        };
+      }
+      if (arg == null) {
+        return null;
+      }
+      if (typeof arg === 'string' || typeof arg === 'number' || typeof arg === 'boolean') {
+        return arg;
+      }
+      if (typeof arg === 'object') {
+        try {
+          return JSON.parse(JSON.stringify(arg, (_, nestedValue) => {
+            if (typeof nestedValue === 'function') {
+              return undefined;
+            }
+            if (typeof nestedValue === 'bigint') {
+              return Number(nestedValue);
+            }
+            return nestedValue;
+          }));
+        } catch (error) {
+          return { summary: Object.prototype.toString.call(arg) };
+        }
+      }
+      return String(arg);
+    });
+    return {
+      consoleArgs: normalizedArgs,
+      extra: extraDetails || null
+    };
+  }
+
+  function forwardSupabaseConsoleError(meta = {}) {
+    if (!(window.SiteErrors && typeof window.SiteErrors.log === 'function')) {
+      return;
+    }
+    const message = meta.message;
+    if (!message) {
+      return;
+    }
+    const fingerprint = `${meta.source || 'supabase-console'}::${message}`;
+    const now = Date.now();
+    const lastSeen = recentSupabaseConsoleFingerprints.get(fingerprint) || 0;
+    if (now - lastSeen < SUPABASE_ERROR_DEDUPE_MS) {
+      return;
+    }
+    if (recentSupabaseConsoleFingerprints.size >= SUPABASE_ERROR_HISTORY_LIMIT) {
+      const oldestKey = recentSupabaseConsoleFingerprints.keys().next().value;
+      if (oldestKey) {
+        recentSupabaseConsoleFingerprints.delete(oldestKey);
+      }
+    }
+    recentSupabaseConsoleFingerprints.set(fingerprint, now);
+    window.SiteErrors.log({
+      pageSlug: meta.pageSlug || state.pageSlug || sanitizeSlug(state.pageSlug),
+      source: meta.source || 'supabase-console',
+      severity: meta.severity || 'error',
+      message,
+      error_code: meta.errorCode || meta.error?.code || null,
+      details: meta.details || meta.error || null
+    });
+  }
+
+  function processSupabaseConsolePayload(args = [], source = 'console.error', extraDetails = null) {
+    if (!Array.isArray(args) || !args.length) {
+      return;
+    }
+    const matchesSupabase = args.some(looksLikeSupabaseConsoleArg);
+    if (!matchesSupabase) {
+      return;
+    }
+    const message = buildSupabaseConsoleMessage(args);
+    if (!message) {
+      return;
+    }
+    const errorArg = args.find(arg => arg instanceof Error) || null;
+    const normalizedDetails = normalizeConsoleDetails(args, extraDetails);
+    forwardSupabaseConsoleError({
+      source,
+      message,
+      error: errorArg,
+      errorCode: errorArg?.code || null,
+      details: normalizedDetails
+    });
+  }
+
+  function registerSupabaseConsoleForwarders() {
+    if (supabaseConsoleForwardersRegistered) {
+      return;
+    }
+    supabaseConsoleForwardersRegistered = true;
+
+    if (console && typeof console.error === 'function') {
+      const originalConsoleError = console.error.bind(console);
+      console.error = function patchedConsoleError(...args) {
+        try {
+          processSupabaseConsolePayload(args, 'console.error');
+        } catch (error) {
+          logDebug('Supabase console forwarding failed:', error.message || error);
+        }
+        originalConsoleError(...args);
+      };
+    }
+
+    window.addEventListener('error', (event) => {
+      if (!event) {
+        return;
+      }
+      const payload = event.error || event.message;
+      if (!payload) {
+        return;
+      }
+      processSupabaseConsolePayload([payload], 'window.error', {
+        filename: event.filename || null,
+        lineno: event.lineno || null,
+        colno: event.colno || null
+      });
+    }, true);
+
+    window.addEventListener('unhandledrejection', (event) => {
+      if (!event || typeof event.reason === 'undefined') {
+        return;
+      }
+      processSupabaseConsolePayload([event.reason], 'unhandledrejection');
+    });
+  }
+
   exposeApi();
   registerLifecycleHooks();
   registerPassiveActivityListeners();
+  registerSupabaseConsoleForwarders();
   autoTrackPageDrawn();
 })();

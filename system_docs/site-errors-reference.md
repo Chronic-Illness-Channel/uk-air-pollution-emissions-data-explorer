@@ -27,8 +27,9 @@ Key indexes: `recorded_at DESC`, `error_timestamp DESC`, `page_slug`, `severity`
 | `bubble-supabase` (and stage-specific labels such as `hero-dataset`, `shared-loader`, `snapshot-helper`) | Any failure while hydrating the scatter/bubble dataset (shared loader bootstrap, direct Supabase fetches, selector metadata). | `error` unless explicitly downgraded. | Dataset source (`cache`, `shared-loader`, `direct`, etc.), query metadata (did the request use URL overrides / snapshot?), render duration, plus the JS stack. |
 | `linechart-supabase` | Same as above but for the multiseries line chart module. | `error` | Includes whether the snapshot path was eligible, shared loader availability, dataset source, durations, and stack traces. |
 | `shared-data-loader` | SharedResources loader failures that occur before either chart module runs (bootstrap dataset fetches, hero dataset fallbacks, etc.). | `error` | Captures the label of the failing stage, retry counts, duration, and stack so we can debug loader-level regressions independent of a specific chart. |
+| `supabase-console` (auto) | Any `console.error`, `window.error`, or `unhandledrejection` that mentions Supabase/PostgREST (including auth errors, rejected promises, and unexpected SDK noise). | `error` | Stores the sanitized console arguments + stack so QA-only console noise still lands in `site_errors` even if a module forgets to call `record*SupabaseFailure()`. |
 
-Other modules should follow the same pattern: emit a concise `sbase_data_error` row to `site_events`, then immediately call `window.SiteErrors.log({...})` with the richer context so tooling can diagnose regressions.
+Other modules should follow the same pattern: emit a concise `sbase_data_error` row to `site_events`, then immediately call `window.SiteErrors.log({...})` with the richer context so tooling can diagnose regressions. The automatic `supabase-console` tap is a safety net—it deduplicates identical messages for ~15 seconds so a flaky endpoint does not overwhelm the table, but explicit `record*SupabaseFailure()` calls should still be considered the source of truth.
 
 ## Detail Payload Shape
 
