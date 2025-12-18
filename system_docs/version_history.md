@@ -5,6 +5,7 @@
 - GH Live: 2025-12-18
 - Notes: Site errors instrumentation now mirrors Supabase console/unhandled promise messages into `site_errors` and deduplicates them to keep QA-only issues visible upstream.
 - Notes: Shared Supabase loader now retries transient failures (exponential backoff + jitter) before surfacing `sbase_data_error` events on category-info embeds.
+- Notes: Changelog verified after deployment to keep LIVE history in sync with GitHub Pages.
 
 ## v4.31
 - GH Test: 2025-12-14
