@@ -19,7 +19,8 @@
     ['/linechart', 'linechart_page_seen'],
     ['/category-info', 'category_info_page_seen'],
     ['/resources-embed', 'resources_embed_page_seen'],
-    ['/user-guide', 'user_guide_page_seen']
+    ['/user-guide', 'user_guide_page_seen'],
+    ['/eco-replaces-all', 'eco_replaces_all_page_seen']
   ]);
   const HEARTBEAT_LABELS = new Set(PAGE_HEARTBEAT_LABELS.values());
   const PASSIVE_ACTIVITY_EVENTS = ['pointermove', 'wheel', 'scroll', 'keydown', 'touchstart'];
