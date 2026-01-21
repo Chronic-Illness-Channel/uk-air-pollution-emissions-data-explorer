@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Loading Eco Replaces All…</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=embed.html">
+  <link rel="icon" type="image/png" sizes="64x64" href="../SharedResources/images/favicon.png">
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+      color: #111827;
+    }
+    main {
+      text-align: center;
+      padding: 32px 24px;
+      max-width: 460px;
+    }
+    a {
+      color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Opening Eco Replaces All…</h1>
+    <p>If you are not redirected automatically, <a id="eco-redirect" href="embed.html">continue to the embed experience</a>.</p>
+  </main>
+  <script>
+    (function redirectToEmbed() {
+      try {
+        var target = new URL('embed.html', window.location.href);
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+        if (search) {
+          target.search = search;
+        }
+        if (hash) {
+          target.hash = hash;
+        }
+        var link = document.getElementById('eco-redirect');
+        if (link) {
+          link.setAttribute('href', target.toString());
+        }
+        window.location.replace(target.toString());
+      } catch (error) {
+        console.warn('EcoReplacesAll redirect failed', error);
+      }
+    })();
+  </script>
+</body>
+</html>

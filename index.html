@@ -45,10 +45,10 @@
   
   <!-- Load Supabase and shared resources -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="SharedResources/supabase-env.js?v=v4-32"></script>
-  <script src="SharedResources/supabase-config.js?v=v4-32"></script>
+  <script src="SharedResources/supabase-env.js?v=v5-0"></script>
+  <script src="SharedResources/supabase-config.js?v=v5-0"></script>
   <!-- Shared Data Loader -->
-  <script src="SharedResources/shared-data-loader.js?v=v4-32"></script>
+  <script src="SharedResources/shared-data-loader.js?v=v5-0"></script>
   
   <!-- Google Charts for charting -->
   <script src="https://www.gstatic.com/charts/loader.js"></script>
@@ -306,6 +306,10 @@
       padding-right: 0;
     }
 
+    .tab-bar-shell {
+      max-width: 90rem;
+    }
+
     .tab-bar {
       position: relative;
       padding-right: 130px;
@@ -319,6 +323,14 @@
       bottom: 0;
       border-bottom: 1px solid #e5e7eb;
       pointer-events: none;
+    }
+
+    .tab-label-stacked {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.1;
+      text-align: left;
     }
 
     .page-title-word {
@@ -742,7 +754,7 @@
   <div id="chart-interface" style="opacity: 0; margin: 0;">
     <!-- Tab Navigation -->
     <div class="bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 tab-bar-shell">
         <div class="tab-bar">
           <nav class="tab-nav -mb-px flex flex-wrap items-center gap-6" role="tablist" aria-label="Chart views">
             <button type="button" id="tab-bubblechart" data-chart="bubblechart" onclick="switchChart('bubblechart')" role="tab" aria-controls="chart-bubblechart" aria-selected="true" tabindex="0" class="py-4 px-2 border-b-2 font-semibold text-[21px] transition-colors flex items-center gap-2">
@@ -752,6 +764,10 @@
             <button type="button" id="tab-linechart" data-chart="linechart" onclick="switchChart('linechart')" role="tab" aria-controls="chart-linechart" aria-selected="false" tabindex="-1" class="py-4 px-2 border-b-2 font-semibold text-[21px] transition-colors flex items-center gap-2">
               <img src="SharedResources/images/Line-Chart-Icon7.png" alt="Line chart icon" class="w-auto" style="height: 37px;">
               <span>Line Chart</span>
+            </button>
+            <button type="button" id="tab-eco-replaces-all" data-chart="eco-replaces-all" onclick="switchChart('eco-replaces-all')" role="tab" aria-controls="chart-eco-replaces-all" aria-selected="false" tabindex="-1" class="py-4 px-2 border-b-2 font-semibold text-[21px] transition-colors flex items-center gap-2">
+              <img src="SharedResources/images/Stove%20Ecodesign%20430x683.svg" alt="Ecodesign replaces icon" class="w-auto" style="height: 46px;">
+              <span class="tab-label-stacked">Ecodesign<br>Replaces</span>
             </button>
             <button type="button" id="tab-category-info" data-chart="category-info" onclick="switchChart('category-info')" role="tab" aria-controls="chart-category-info" aria-selected="false" tabindex="-1" class="py-4 px-2 border-b-2 font-semibold text-[21px] transition-colors flex items-center gap-2">
               <img src="SharedResources/images/Group-Info-Icon.png" alt="Category info icon" class="h-8 w-auto" style="height: 37px;">
@@ -783,7 +799,7 @@
     </div>
 
     <!-- Line Chart Container -->
-  <div id="chart-linechart" class="chart-container" style="visibility: hidden; height: 0; overflow: hidden;" role="tabpanel" aria-labelledby="tab-linechart" aria-hidden="true">
+    <div id="chart-linechart" class="chart-container" style="visibility: hidden; height: 0; overflow: hidden;" role="tabpanel" aria-labelledby="tab-linechart" aria-hidden="true">
       <iframe
         id="linechart-iframe"
         class="chart-iframe"
@@ -792,6 +808,19 @@
         scrolling="no"
         style="height: 600px;"
         title="NAEI Activity Data Line Chart"></iframe>
+    </div>
+
+    <!-- Ecodesign Replaces Container -->
+  <div id="chart-eco-replaces-all" class="chart-container" style="visibility: hidden; height: 0; overflow: hidden;" role="tabpanel" aria-labelledby="tab-eco-replaces-all" aria-hidden="true">
+      <iframe
+        id="ecoreplaces-iframe"
+        class="chart-iframe lazy-iframe"
+        data-src="EcoReplacesAll/embed.html"
+        loading="lazy"
+        frameborder="0"
+        scrolling="no"
+        style="height: 1200px;"
+        title="Ecodesign Replaces"></iframe>
     </div>
 
     <!-- Category Info Container -->
@@ -846,7 +875,7 @@
     <strong>Contact:</strong> <a  href="mailto:info@chronicillnesschannel.co.uk" target="_blank" rel="noopener" class="text-blue-600hover:text-blue-800">info@chronicillnesschannel.co.uk</a>
       <br>
       <span style="font-size: 0.8em; color: #666; margin-top: 4px; display: inline-block;">
-        Explorer Version: v4.32 (Line: v2.4, Bubble: v3.0)<span class="footer-break" aria-hidden="true"> </span> • Build: 2025.12.18
+        Explorer Version: v5.0 (Line: v2.4, Bubble: v3.0)<span class="footer-break" aria-hidden="true"> </span> • Build: 2026.01.21
       </span>
     </footer>
 
@@ -912,12 +941,13 @@
       }
     }
     
-    const STATIC_CHART_IDS = new Set(['category-info', 'user-guide', 'resources']);
+    const STATIC_CHART_IDS = new Set(['eco-replaces-all', 'category-info', 'user-guide', 'resources']);
     const ALL_CHART_IDS = new Set(['bubblechart', 'linechart', ...STATIC_CHART_IDS]);
-    const CHART_SEQUENCE = ['bubblechart', 'linechart', 'category-info', 'user-guide', 'resources'];
+    const CHART_SEQUENCE = ['bubblechart', 'linechart', 'eco-replaces-all', 'category-info', 'user-guide', 'resources'];
     const TAB_ID_MAP = {
       'bubblechart': 'tab-bubblechart',
       'linechart': 'tab-linechart',
+      'eco-replaces-all': 'tab-eco-replaces-all',
       'category-info': 'tab-category-info',
       'user-guide': 'tab-user-guide',
       'resources': 'tab-resources'
@@ -928,6 +958,7 @@
     const chartStates = {
       'bubblechart': [],            // Bubble chart state
       'linechart': [],            // Line chart state
+      'eco-replaces-all': [],   // Ecodesign replaces view (static)
       'category-info': [],   // Category info view (static)
       'user-guide': [],   // User guide view (static)
       'resources': []     // Resources view (static)
@@ -1033,6 +1064,7 @@
     const chartReadyState = {
       bubblechart: false,
       linechart: false,
+      'eco-replaces-all': false,
       'category-info': false
     };
     const BASE_REQUIRED_CHART_KEYS = ['bubblechart', 'linechart'];
@@ -1058,6 +1090,7 @@
     const iframeElements = {
       bubblechart: document.getElementById('bubblechart-iframe'),
       linechart: document.getElementById('linechart-iframe'),
+      'eco-replaces-all': document.getElementById('ecoreplaces-iframe'),
       'category-info': document.getElementById('categoryinfo-iframe'),
       'user-guide': document.getElementById('userguide-iframe'),
       resources: document.getElementById('resources-iframe')
@@ -1460,6 +1493,13 @@
         '2': 'linechart',
         'line': 'linechart',
         'linechart': 'linechart',
+        'eco-replaces-all': 'eco-replaces-all',
+        'ecoreplacesall': 'eco-replaces-all',
+        'eco-replaces': 'eco-replaces-all',
+        'ecodesign-replaces': 'eco-replaces-all',
+        'ecodesignreplaces': 'eco-replaces-all',
+        'ecodesign': 'eco-replaces-all',
+        'eco': 'eco-replaces-all',
         '3': 'category-info',
         'category-info': 'category-info',
         '4': 'user-guide',
@@ -1482,6 +1522,9 @@
       }
       if (normalizedId === 'linechart') {
         return `${queryBase}?page=linechart&pollutant_id=5&category_ids=1&start_year=1970&end_year=2023`;
+      }
+      if (normalizedId === 'eco-replaces-all') {
+        return `${queryBase}?page=eco-replaces-all`;
       }
       if (STATIC_CHART_IDS.has(normalizedId)) {
         return `${basePath}${normalizedId}`;
@@ -1694,7 +1737,11 @@
           const newQuery = paramsArray.join('&');
           newUrl = `${queryBase}?${newQuery}`;
         } else if (STATIC_CHART_IDS.has(chartId)) {
-          newUrl = `${basePath}${chartId}`;
+          if (chartId === 'eco-replaces-all') {
+            newUrl = `${queryBase}?page=${chartId}`;
+          } else {
+            newUrl = `${basePath}${chartId}`;
+          }
           chartStates[chartId] = [];
         }
 
@@ -1915,7 +1962,7 @@
     
     // Simple loading overlay control - MESSAGE BASED APPROACH
     let overlayHidden = false;
-    const heightsReceived = { bubblechart: false, linechart: false, 'category-info': false, 'user-guide': false };
+    const heightsReceived = { bubblechart: false, linechart: false, 'eco-replaces-all': false, 'category-info': false, 'user-guide': false };
     const OVERLAY_FAILSAFE_DELAY_MS = 12000;
     let overlayFailsafeTimer = null;
     
@@ -1923,6 +1970,11 @@
     const lineIframe = iframeElements.linechart;
     if (lineIframe) {
       lineIframe.style.height = '1200px'; // Initial estimate
+    }
+
+    const ecoReplacesIframe = iframeElements['eco-replaces-all'];
+    if (ecoReplacesIframe) {
+      ecoReplacesIframe.style.height = '1200px';
     }
 
     const bubbleIframe = iframeElements.bubblechart;

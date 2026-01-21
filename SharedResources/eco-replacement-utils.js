@@ -10,6 +10,9 @@
     compositionPromise: null
   };
 
+  // Avoid blocking chart renders forever if Supabase category metadata is slow or unreachable.
+  const CATEGORY_META_TIMEOUT_MS = 4000;
+
   function getSupabaseClient() {
     try {
       if (global.SupabaseConfig?.initSupabaseClient) {
@@ -118,28 +121,40 @@
       return state.metadataPromise;
     }
     state.metadataPromise = (async () => {
-      if (sharedLoader?.getAllCategoryMetadata) {
-        try {
-          const cached = await sharedLoader.getAllCategoryMetadata();
-          if (Array.isArray(cached) && cached.length) {
-            state.metadata = cached;
-            return state.metadata;
+      const fetchMetadata = async () => {
+        if (sharedLoader?.getAllCategoryMetadata) {
+          try {
+            const cached = await sharedLoader.getAllCategoryMetadata();
+            if (Array.isArray(cached) && cached.length) {
+              state.metadata = cached;
+              return state.metadata;
+            }
+          } catch (error) {
+            console.warn('[EcoReplacementUtils] Shared loader category metadata unavailable:', error?.message || error);
           }
-        } catch (error) {
-          console.warn('[EcoReplacementUtils] Shared loader category metadata unavailable:', error?.message || error);
         }
-      }
-      const client = getSupabaseClient();
-      if (!client) {
-        console.warn('[EcoReplacementUtils] Supabase client missing; category inclusion will be inconclusive.');
-        return [];
-      }
-      const response = await client.from(CATEGORY_TABLE).select('*');
-      if (response.error) {
-        throw response.error;
-      }
-      state.metadata = response.data || [];
-      return state.metadata;
+        const client = getSupabaseClient();
+        if (!client) {
+          console.warn('[EcoReplacementUtils] Supabase client missing; category inclusion will be inconclusive.');
+          return [];
+        }
+        const response = await client.from(CATEGORY_TABLE).select('*');
+        if (response.error) {
+          throw response.error;
+        }
+        state.metadata = response.data || [];
+        return state.metadata;
+      };
+
+      const result = await Promise.race([
+        fetchMetadata(),
+        new Promise(resolve => setTimeout(() => {
+          console.warn('[EcoReplacementUtils] Category metadata fetch timed out; proceeding without inclusion signals.');
+          resolve([]);
+        }, CATEGORY_META_TIMEOUT_MS))
+      ]);
+
+      return result;
     })().catch(error => {
       state.metadataPromise = null;
       console.warn('[EcoReplacementUtils] Category metadata fetch failed:', error?.message || error);
@@ -458,6 +473,7 @@
       timeseriesIndex,
       ecoCategoryId,
       fireplaceCategoryId,
+      baselineFireplaceCategoryId,
       year,
       activityPollutantId,
       energyProfile,
@@ -480,6 +496,22 @@
     const yearKey = resolveYearKey(year);
     const ecoEmission = getTimeseriesValue(timeseriesIndex, pollutantId, ecoCategoryId, yearKey);
     const fireplaceEmission = getTimeseriesValue(timeseriesIndex, pollutantId, fireplaceCategoryId, yearKey);
+    const baselineFireplaceEmission = getTimeseriesValue(
+      timeseriesIndex,
+      pollutantId,
+      Number.isFinite(baselineFireplaceCategoryId) ? baselineFireplaceCategoryId : fireplaceCategoryId,
+      yearKey
+    );
+    const baselineFireplaceEnergy = Number.isFinite(activityPollutantId)
+      ? getTimeseriesValue(
+        timeseriesIndex,
+        activityPollutantId,
+        Number.isFinite(baselineFireplaceCategoryId) ? baselineFireplaceCategoryId : fireplaceCategoryId,
+        yearKey
+      )
+      : NaN;
+    const remainderEmission = Math.max(0, normalizeNumber(baselineFireplaceEmission) - normalizeNumber(fireplaceEmission));
+    const remainderEnergy = Math.max(0, normalizeNumber(baselineFireplaceEnergy) - normalizeNumber(profile.fireplaceEnergy));
     const ecoEmissionFactor = calculateEmissionFactor({
       pollutantValue: ecoEmission,
       actDataValue: profile.ecoEnergy
@@ -495,6 +527,10 @@
       pollutantId: Number(pollutantId),
       ecoEmission: normalizeNumber(ecoEmission),
       fireplaceEmission: normalizeNumber(fireplaceEmission),
+      baselineFireplaceEmission: normalizeNumber(baselineFireplaceEmission),
+      fireplaceRemainderEmission: remainderEmission,
+      baselineFireplaceEnergy: normalizeNumber(baselineFireplaceEnergy),
+      fireplaceRemainderEnergy: remainderEnergy,
       replacementEmission: normalizeNumber(replacementEmission),
       ecoEmissionFactor: Number.isFinite(ecoEmissionFactor) ? ecoEmissionFactor : null,
       energyProfile: profile

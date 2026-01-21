@@ -1,0 +1,2873 @@
+{
+  "13BUTADIENE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " VOC associated with "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "13-butadiene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "16PAH": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Combined PAH metric capturing overall "
+      },
+      {
+        "bold": true,
+        "text": "carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "toxic"
+      },
+      {
+        "bold": false,
+        "text": " PAH burden."
+      }
+    ],
+    "name": "16PAH",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "ACENAPHTHENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Acenaphthene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "ACENAPHTHYLENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Acenaphthylene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "AMMONIA": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Irritates airways and contributes to "
+      },
+      {
+        "bold": true,
+        "text": "secondary PM2.5"
+      },
+      {
+        "bold": false,
+        "text": " formation."
+      }
+    ],
+    "name": "Ammonia",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "ANTHRACENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Anthracene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "ARSENIC": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " element associated with "
+      },
+      {
+        "bold": true,
+        "text": "lung and skin cancer"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Arsenic",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BENZAANTHRACENE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Probable carcinogen"
+      },
+      {
+        "bold": false,
+        "text": " contributing to long-term "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Benz[a]anthracene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BENZENE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " VOC linked to "
+      },
+      {
+        "bold": true,
+        "text": "blood cancers"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Benzene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BENZOAPYRENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Highly "
+      },
+      {
+        "bold": true,
+        "text": "carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " PAH strongly associated with increased "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Benzo[a]pyrene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BENZOBFLUORANTHENE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " PAH contributing to "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Benzo[b]fluoranthene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BENZOGHIPERYLENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular effects"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Benzo[ghi]perylene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BENZOKFLUORANTHENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH with "
+      },
+      {
+        "bold": true,
+        "text": "carcinogenic potential"
+      },
+      {
+        "bold": false,
+        "text": ", contributing to "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Benzo[k]fluoranthene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BERYLLIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Beryllium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BLACKCARBON": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Soot component associated with "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular disease"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "respiratory harm"
+      },
+      {
+        "bold": false,
+        "text": ", and "
+      },
+      {
+        "bold": true,
+        "text": "climate warming"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Black Carbon",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "BLACKSMOKE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Indicator of soot historically associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory disease"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "mortality"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Black Smoke",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "CADMIUM": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Toxic"
+      },
+      {
+        "bold": false,
+        "text": " metal affecting "
+      },
+      {
+        "bold": true,
+        "text": "kidneys"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "bones"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Cadmium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "CALCIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Calcium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "CARBONDIOXIDEASCARBON": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affects health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Carbon Dioxide as Carbon",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "CARBONMONOXIDE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Interferes with oxygen delivery causing "
+      },
+      {
+        "bold": true,
+        "text": "headaches"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "dizziness"
+      },
+      {
+        "bold": false,
+        "text": ", and potentially "
+      },
+      {
+        "bold": true,
+        "text": "fatal poisoning"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Carbon Monoxide",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "CHROMIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Some forms are "
+      },
+      {
+        "bold": true,
+        "text": "carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " and cause "
+      },
+      {
+        "bold": true,
+        "text": "respiratory harm"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Chromium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "CHRYSENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH with "
+      },
+      {
+        "bold": true,
+        "text": "suspected carcinogenic effects"
+      },
+      {
+        "bold": false,
+        "text": ", contributing to "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Chrysene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "COPPER": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Can cause "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": " at elevated levels."
+      }
+    ],
+    "name": "Copper",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "DECABROMODIPHENYLETHER": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Decabromodiphenyl ether",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "DIBENZAHANTHRACENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Strongly "
+      },
+      {
+        "bold": true,
+        "text": "carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " PAH associated with increased "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Dibenz[ah]anthracene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "DIOXINSPCDDF": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Highly "
+      },
+      {
+        "bold": true,
+        "text": "toxic"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " compounds affecting "
+      },
+      {
+        "bold": true,
+        "text": "immune"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "reproductive"
+      },
+      {
+        "bold": false,
+        "text": ", and "
+      },
+      {
+        "bold": true,
+        "text": "endocrine systems"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Dioxins (PCDD/F)",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "FLUORANTHENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory effects"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Fluoranthene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "FLUORENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Fluorene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "HEXACHLOROBENZENE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "persistent"
+      },
+      {
+        "bold": false,
+        "text": " organic pollutant."
+      }
+    ],
+    "name": "Hexachlorobenzene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "HFCS": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affect health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "HFCs",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "HYDROGENCHLORIDE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Acid gas causing "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Hydrogen Chloride",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "HYDROGENFLUORIDE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Highly irritant acid gas causing "
+      },
+      {
+        "bold": true,
+        "text": "respiratory and eye damage"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Hydrogen Fluoride",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "INDENO123CDPYRENE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " PAH linked to "
+      },
+      {
+        "bold": true,
+        "text": "cancer"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Indeno[123-cd]pyrene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "LEAD": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Neurotoxic"
+      },
+      {
+        "bold": false,
+        "text": "; impairs "
+      },
+      {
+        "bold": true,
+        "text": "child development"
+      },
+      {
+        "bold": false,
+        "text": "; no safe exposure level."
+      }
+    ],
+    "name": "Lead",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "LINDANE": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Neurotoxic"
+      },
+      {
+        "bold": false,
+        "text": " pesticide affecting the "
+      },
+      {
+        "bold": true,
+        "text": "nervous system"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Lindane",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "MAGNESIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Magnesium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "MANGANESE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "High exposure linked to "
+      },
+      {
+        "bold": true,
+        "text": "neurological effects"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Manganese",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "MERCURY": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Neurotoxic"
+      },
+      {
+        "bold": false,
+        "text": " and capable of "
+      },
+      {
+        "bold": true,
+        "text": "bioaccumulation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Mercury",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "METHANE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affects health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "ozone formation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Methane",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "NAPHTHALENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Volatile PAH causing "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "; high exposures linked to "
+      },
+      {
+        "bold": true,
+        "text": "haemolytic effects"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Naphthalene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "NF3": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affect health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "NF3",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "NICKEL": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory effects"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "cancer risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Nickel",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "NITROGENOXIDESASNO2": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Irritates airways and worsens "
+      },
+      {
+        "bold": true,
+        "text": "asthma"
+      },
+      {
+        "bold": false,
+        "text": "; contributes to "
+      },
+      {
+        "bold": true,
+        "text": "secondary PM"
+      },
+      {
+        "bold": false,
+        "text": " formation."
+      }
+    ],
+    "name": "Nitrogen Oxides as NO2",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "NITROUSOXIDE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affects health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Nitrous Oxide",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "NONMETHANEVOC": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Includes compounds causing "
+      },
+      {
+        "bold": true,
+        "text": "irritation"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "toxicity"
+      },
+      {
+        "bold": false,
+        "text": ", and "
+      },
+      {
+        "bold": true,
+        "text": "ozone formation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Non Methane VOC",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "OCTABROMODIPHENYLETHER": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Octabromodiphenyl ether",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PENTABROMODIPHENYLETHER": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Pentabromodiphenyl Ether",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PENTACHLOROPHENOL": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Toxic"
+      },
+      {
+        "bold": false,
+        "text": " compound affecting "
+      },
+      {
+        "bold": true,
+        "text": "liver"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "kidneys"
+      },
+      {
+        "bold": false,
+        "text": ", and "
+      },
+      {
+        "bold": true,
+        "text": "immune system"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Pentachlorophenol",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PFCS": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affect health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "PFCs",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PHENANTHRENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH associated with "
+      },
+      {
+        "bold": true,
+        "text": "respiratory irritation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Phenanthrene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PM01": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Ultrafine particles linked to "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular effects"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "systemic inflammation"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "PM0.1",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PM1": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Very fine particles associated with "
+      },
+      {
+        "bold": true,
+        "text": "deep lung penetration"
+      },
+      {
+        "bold": false,
+        "text": " and increased "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular risk"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "PM1",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PM10": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Particles that worsen "
+      },
+      {
+        "bold": true,
+        "text": "asthma"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "bronchitis"
+      },
+      {
+        "bold": false,
+        "text": ", and other "
+      },
+      {
+        "bold": true,
+        "text": "respiratory conditions"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "PM10",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PM25": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Fine particles strongly linked to "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular disease"
+      },
+      {
+        "bold": false,
+        "text": ", "
+      },
+      {
+        "bold": true,
+        "text": "respiratory disease"
+      },
+      {
+        "bold": false,
+        "text": ", and "
+      },
+      {
+        "bold": true,
+        "text": "premature mortality"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "PM2.5",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "POLYCHLORINATEDBIPHENYLS": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Carcinogenic"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "endocrine-disrupting"
+      },
+      {
+        "bold": false,
+        "text": " compounds."
+      }
+    ],
+    "name": "Polychlorinated biphenyls",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "POTASSIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Potassium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "PYRENE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "PAH contributing to "
+      },
+      {
+        "bold": true,
+        "text": "respiratory effects"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Pyrene",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "SELENIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Selenium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "SHORTCHAINCHLORINATEDPARAFFINSC1013": {
+    "health": [
+      {
+        "bold": true,
+        "text": "Persistent"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "toxic"
+      },
+      {
+        "bold": false,
+        "text": " compounds affecting "
+      },
+      {
+        "bold": true,
+        "text": "liver"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "thyroid"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Short Chain Chlorinated Paraffins (C10-13)",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "SODIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Sodium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "SULPHURDIOXIDE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Triggers "
+      },
+      {
+        "bold": true,
+        "text": "bronchoconstriction"
+      },
+      {
+        "bold": false,
+        "text": " and worsens "
+      },
+      {
+        "bold": true,
+        "text": "asthma"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Sulphur Dioxide",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "SULPHURHEXAFLUORIDE": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Affect health "
+      },
+      {
+        "bold": true,
+        "text": "indirectly"
+      },
+      {
+        "bold": false,
+        "text": " through "
+      },
+      {
+        "bold": true,
+        "text": "climate change"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Sulphur hexafluoride",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "TIN": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Tin",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "TOTALGHGSINCO2EQ": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Aggregated metric reflecting "
+      },
+      {
+        "bold": true,
+        "text": "climate-related health impacts"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Total GHGs in CO2 Eq.",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "TPM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Total particulate matter contributing to "
+      },
+      {
+        "bold": true,
+        "text": "respiratory"
+      },
+      {
+        "bold": false,
+        "text": " and "
+      },
+      {
+        "bold": true,
+        "text": "cardiovascular effects"
+      },
+      {
+        "bold": false,
+        "text": ", depending on composition."
+      }
+    ],
+    "name": "TPM",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "VANADIUM": {
+    "health": [
+      {
+        "bold": false,
+        "text": "Associated with "
+      },
+      {
+        "bold": true,
+        "text": "adverse health effects"
+      },
+      {
+        "bold": false,
+        "text": " depending on exposure."
+      }
+    ],
+    "name": "Vanadium",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  },
+  "ZINC": {
+    "health": [
+      {
+        "bold": false,
+        "text": "High exposures can cause "
+      },
+      {
+        "bold": true,
+        "text": "metal fume fever"
+      },
+      {
+        "bold": false,
+        "text": "."
+      }
+    ],
+    "name": "Zinc",
+    "sources": [
+      [
+        {
+          "bold": false,
+          "text": "Wood-burning stoves and open fires"
+        }
+      ],
+      [
+        {
+          "bold": false,
+          "text": "Other domestic combustion sources"
+        }
+      ]
+    ],
+    "why": [
+      {
+        "bold": false,
+        "text": "Explains the role of this pollutant in air-quality assessment, exposure risk, or climate-related health impacts."
+      }
+    ]
+  }
+}

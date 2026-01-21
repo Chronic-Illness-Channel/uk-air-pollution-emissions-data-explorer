@@ -34,7 +34,7 @@
     },
     {
       key: 'tj-net',
-      aliases: ['tj (net)', 'tj net', 'terajoule (net)', 'terajoules (net)', 'tj'],
+      aliases: ['tj (net)', 'tj(net)', 'tj net', 'terajoule (net)', 'terajoules (net)', 'tj'],
       abbreviation: 'TJ (net)',
       singular: 'terajoule (net)',
       plural: 'terajoules (net)',
@@ -54,6 +54,7 @@
       aliases: [
         'grams international toxic equivalent',
         'g i-teq',
+        'g-i-teq',
         'g i-teq (or g i-teq)'
       ],
       abbreviation: 'g I-TEQ',

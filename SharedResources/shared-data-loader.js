@@ -31,9 +31,9 @@ const sharedDataWarnLog = (() => {
 })();
 const sharedDataNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
 const SHARED_FAILURE_EVENT_COOLDOWN_MS = 60000;
-const SHARED_SUPABASE_MAX_ATTEMPTS = 3;
-const SHARED_SUPABASE_RETRY_BASE_DELAY_MS = 350;
-const SHARED_SUPABASE_RETRY_MAX_DELAY_MS = 2000;
+const SHARED_SUPABASE_MAX_ATTEMPTS = 4;
+const SHARED_SUPABASE_RETRY_DELAYS_MS = Object.freeze([500, 2500, 8000]); // Attempts 2-4 wait 0.5s, 2.5s, 8s respectively
+const SHARED_SUPABASE_RETRY_JITTER_MS = 300;
 const sharedFailureEventScopes = new Map();
 
 function normalizeSharedSlug(slug) {
@@ -120,9 +120,16 @@ function isTransientSupabaseError(error) {
 }
 
 function getSupabaseRetryDelay(attempt) {
-  const backoff = SHARED_SUPABASE_RETRY_BASE_DELAY_MS * Math.pow(2, Math.max(0, attempt - 1));
-  const jitter = Math.random() * 150;
-  return Math.min(SHARED_SUPABASE_RETRY_MAX_DELAY_MS, Math.round(backoff + jitter));
+  if (!Number.isFinite(attempt) || attempt < 1) {
+    return SHARED_SUPABASE_RETRY_DELAYS_MS[0];
+  }
+  const index = Math.min(
+    SHARED_SUPABASE_RETRY_DELAYS_MS.length - 1,
+    Math.max(0, attempt - 1)
+  );
+  const baseDelay = SHARED_SUPABASE_RETRY_DELAYS_MS[index];
+  const jitter = Math.random() * SHARED_SUPABASE_RETRY_JITTER_MS;
+  return Math.round(Math.max(0, baseDelay + jitter));
 }
 
 function reportSharedSupabaseFailure(context = {}) {
